@@ -94,7 +94,7 @@ State HitoriSolver::AStar(State initialState, double (*heuristic)(State)) {
   return State();
 }
 
-State HitoriSolver::HillClimbing(State initialState,
+State HitoriSolver::SteepestAscentHillClimbing(State initialState,
                                  double (*heuristic)(State)) {
   // Initialize a currentState variable with the initial state
   State currentState = initialState;
@@ -126,8 +126,8 @@ State HitoriSolver::HillClimbing(State initialState,
   return currentState;
 }
 
-State HitoriSolver::HillClimbing(State initialState,
-                                 double (*heuristic)(State)) {
+State HitoriSolver::StochasticHillClimbing(State initialState,
+                                           double (*heuristic)(State)) {
   // Initialize a currentState variable with the initial state
   State currentState = initialState;
   while (true) {
@@ -143,35 +143,48 @@ State HitoriSolver::HillClimbing(State initialState,
     // Now each state will be assigned a probability according to its score
     // (heuristic). The higher the score is, the lower the probability will be.
     // This is done using a softmax function
-    auto softmax =
-        [](std::vector<double>& scores) {
-          double sum = 0.f;
-          for (auto it = scores.begin(); it != scores.end(); ++it) {
-            // Since we want higher scores to have less probability, we use
-            // exp(-x) instead of exp(x - MaximumScore).
-            *it = std::exp(-*it);
-            sum += *it;
-          }
-          for (auto it = scores.begin(); it != scores.end(); ++it) {
-            *it /= sum;
-          }
-        }
+    auto softmax = [](std::vector<double>& scores) {
+      double sum = 0.f;
+      for (auto it = scores.begin(); it != scores.end(); ++it) {
+        // Since we want higher scores to have less probability, we use
+        // exp(-x) instead of exp(x - MaximumScore).
+        *it = std::exp(-*it);
+        sum += *it;
+      }
+      for (auto it = scores.begin(); it != scores.end(); ++it) {
+        *it /= sum;
+      }
+    };
 
+    // Create a new vector 'probabilities', which initially contains the score
+    // of each successor (which are NOT probabilities)
     std::vector<double> probabilities;
-    double sum;
     for (auto it = successors->begin(); successors->end(); ++it) {
-      probabilities.push_back(worstSuccessor->score - it->score)
+      probabilities.push_back(it->score)
     }
-    // Apply softmax to probabilities (which is initially a vector of numbers,
-    // NOT actual probabilities)
+    // Apply softmax to 'probabilities' to get a probability distribution
     softmax(probabilities);
 
-    // If there was a successor with a better score than the current tate,
-    // continue the search with that successor. Otherwise
-    if (bestSuccessor->score <= currentState.score)
-      currentState = *bestSuccessor;
-    else {
+    // Randomly choose a state based on the probability distribution above.
+    double randomNumber =
+        static_cast<double>(std::rand()) / static_cast<double>(RAND_MAX);
+
+    State nextState;
+    double low = 0;
+    for (unsigned int i = 0; i < probabilities.size(); ++i) {
+      if (randomNumber >= low && randomNumber < low + probabilities[i]) {
+        // The i'th successor (with probability = probabilities[i]) was selected
+        nextState = (*successors)[i];
+        break;
+      }
+      low += probabilities[i];
+    }
+
+    // Check if 'nextState' is better than 'currentState'
+    if (currentState.score < nextState.score) {
       break;
+    } else {
+      currentState = nextState;
     }
   }
 
@@ -180,4 +193,37 @@ State HitoriSolver::HillClimbing(State initialState,
   return currentState;
 }
 
+State HitoriSolver::KStartSteepestAscentHillClimbing(
+    State initialState, double (*heuristic)(State)) {
+  return State();
+}
+
+State HitoriSolver::KStartStochasticHillClimbing(State initialState,
+                                                 double (*heuristic)(State)) {
+  // Use the maximum number of threads available
+  omp_set_num_threads(omp_get_max_threads());
+
+  // Create a vector the size of the number of threads available
+  int numOfThreads = omp_get_num_threads();
+  std::vector<State> results(numOfThreads);
+
+#pragma omp parallel
+  {
+    // Get the thread number
+    int threadNum = omp_get_thread_num();
+    results[threadNum] = StochasticHillClimbing(initialState, heuristic);
+
+#pragma omp barrier
+    {}
+  }
+
+  // Check the results from each thread and return the first one that is a goal
+  for (auto it = results.begin(); it != results.end(); ++it) {
+    if (it->IsGoal()) {
+      return *it;
+    }
+  }
+
+  return State();
+}
 }  // namespace HitoriSolverCore
