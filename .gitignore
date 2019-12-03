@@ -54,6 +54,5 @@
 *.lock
 *.json
 *.metagen
-*.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
