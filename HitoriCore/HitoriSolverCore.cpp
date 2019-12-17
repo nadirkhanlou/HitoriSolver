@@ -1,30 +1,133 @@
 #include "HitoriSolverCore.h"
-#include <algorithm>
-#include <queue>
 
 namespace HitoriSolverCore {
-State::State() {}
+State::State() : _dimension(0), score(0), costSoFar(0) {}
 
-State::~State() {}
+State::State(int dimension) : _dimension(dimension), score(0), costSoFar(0) {
+  _blackedOut = new bool*[_dimension];
+  for (int i = 0; i < _dimension; ++i) {
+    _blackedOut[i] = new bool[_dimension]{};  // Initializes all values to false
+  }
+}
 
-bool State::IsGoal() { return true; }
+State::State(const State& other)
+    : score(other.score), costSoFar(other.costSoFar) {
+  for (int i = 0; i < _dimension; ++i) {
+    delete[] this->_blackedOut[i];
+  }
+  delete this->_blackedOut;
+  this->_dimension = other._dimension;
+  this->_blackedOut = new bool*[_dimension];
+  for (int i = 0; i < _dimension; ++i) {
+    this->_blackedOut[i] = new bool[_dimension];
+    std::copy(other._blackedOut[i], other._blackedOut[i] + _dimension,
+              this->_blackedOut[i]);
+  }
+}
 
-std::vector<State>* State::Successor(SearchType searchType,
-                                     double (*heuristic)(State)) {
-  return {};
+State::State(State&& other)
+    : _dimension(other._dimension),
+      score(other.score),
+      costSoFar(other.costSoFar) {
+  this->_blackedOut = other._blackedOut;
+  other._blackedOut = nullptr;
+}
+
+State::~State() {
+  for (int i = 0; i < _dimension; ++i) {
+    delete[] _blackedOut[i];
+  }
+  delete[] _blackedOut;
+}
+
+State& State::operator=(const State& other) {
+  if (&other != this) {
+    this->score = other.score;
+    this->costSoFar = other.costSoFar;
+    for (int i = 0; i < _dimension; ++i) {
+      delete[] this->_blackedOut[i];
+    }
+    delete this->_blackedOut;
+    this->_dimension = other._dimension;
+    this->_blackedOut = new bool*[_dimension];
+    for (int i = 0; i < _dimension; ++i) {
+      this->_blackedOut[i] = new bool[_dimension];
+      std::copy(other._blackedOut[i], other._blackedOut[i] + _dimension,
+                this->_blackedOut[i]);
+    }
+  }
+  return *this;
+}
+
+State& State::operator=(State&& other) {
+  if (&other != this) {
+    this->score = other.score;
+    this->costSoFar = other.costSoFar;
+    for (int i = 0; i < _dimension; ++i) {
+      delete[] this->_blackedOut[i];
+    }
+    delete this->_blackedOut;
+    this->_dimension = other._dimension;
+    this->_blackedOut = other._blackedOut;
+    other._blackedOut = nullptr;
+  }
+  return *this;
 }
 
 HitoriSolver::HitoriSolver(const char* filePath) {}
 
 HitoriSolver::~HitoriSolver() {}
 
+bool HitoriSolver::IsGoal(State& s) {
+  assert(this->_dimension == s._dimension);
+
+  std::set<int> set;
+  int count;
+
+  // Check all rows for duplicate numbers
+  for (int i = 0; i < _dimension; ++i) {
+    set.clear();
+    count = 0;
+    for (int j = 0; j < _dimension; ++j) {
+      if (!s._blackedOut[i][j]) {
+        set.insert(_gameBoard[i][j]);
+        ++count;
+      }
+    }
+    // Duplicate numbers found
+    if (set.size() != count) {
+      return false;
+    }
+  }
+  // Check all columns for duplicate numbers
+  for (int j = 0; j < _dimension; ++j) {
+    set.clear();
+    count = 0;
+    for (int i = 0; i < _dimension; ++i) {
+      if (!s._blackedOut[i][j]) {
+        set.insert(_gameBoard[i][j]);
+        ++count;
+      }
+    }
+    // Duplicate numbers found
+    if (set.size() != count) {
+      return false;
+    }
+  }
+  // Now columns or rows with duplicate numbers
+  return true;
+}
+
+std::vector<State>* HitoriSolver::Successor(State currentState, SearchType searchType,
+                                            double (*heuristic)(State)) {
+  return {};
+}
+
 State HitoriSolver::GreedyBfs(State initialState, double (*heuristic)(State)) {
   // Create a new minimum priority queue (min heap) and insert the initial state
   // into it. States with compared to each other based on their score =
   // heuristic. States with lower scores are higher up in the heap.
-  std::priority_queue<
-      std::priority_queue<int, std::vector<State>, std::greater<State>>,
-      std::vector<State>, StateGreaterComparator>
+  std::priority_queue<State, std::vector<State>, StateGreaterComparator>
       priorityQueue;
   priorityQueue.push(initialState);
 
@@ -32,16 +135,16 @@ State HitoriSolver::GreedyBfs(State initialState, double (*heuristic)(State)) {
   while (!priorityQueue.empty()) {
     // Pop the state with the lowest score. This will be the state that is to be
     // examined in this iteration.
-    State current_state = priorityQueue.top();
+    State currentState = priorityQueue.top();
     priorityQueue.pop();
 
-    // If current_state is the goal, return it
-    if (current_state.IsGoal()) {
-      return current_state;
+    // If currentState is the goal, return it
+    if (IsGoal(currentState)) {
+      return currentState;
     }
-    // current_state was not the goal. So we expand it in our search tree.
+    // currentState was not the goal. So we expand it in our search tree.
     std::vector<State>* successors =
-        current_state.Successor(SearchType::GreedyBfs, heuristic);
+        Successor(currentState, SearchType::GreedyBfs, heuristic);
     for (auto it = successors->begin(); it != successors->end(); ++it) {
       // @TODO: Add a visited states buffer
       if (/* If *it was already visited */ true) {
@@ -49,8 +152,6 @@ State HitoriSolver::GreedyBfs(State initialState, double (*heuristic)(State)) {
         // @TODO: Add *it to the visited buffer
       }
     }
-    successors->clear();
-    delete successors;
   }
 
   // The goal could not be found.
@@ -69,16 +170,16 @@ State HitoriSolver::AStar(State initialState, double (*heuristic)(State)) {
   while (!priorityQueue.empty()) {
     // Pop the state with the lowest score. This will be the state that is to be
     // examined in this iteration.
-    State current_state = priorityQueue.top();
+    State currentState = priorityQueue.top();
     priorityQueue.pop();
 
-    // If current_state is the goal, return it
-    if (current_state.IsGoal()) {
-      return current_state;
+    // If currentState is the goal, return it
+    if (IsGoal(currentState)) {
+      return currentState;
     }
     // current_state was not the goal. So we expand it in our search tree.
     std::vector<State>* successors =
-        current_state.Successor(SearchType::AStar, heuristic);
+        Successor(currentState, SearchType::AStar, heuristic);
     for (auto it = successors->begin(); it != successors->end(); ++it) {
       // @TODO: Add a visited states buffer
       if (/* If *it was already visited */ true) {
@@ -87,7 +188,6 @@ State HitoriSolver::AStar(State initialState, double (*heuristic)(State)) {
       }
     }
     successors->clear();
-    delete successors;
   }
 
   // The goal could not be found.
@@ -95,22 +195,22 @@ State HitoriSolver::AStar(State initialState, double (*heuristic)(State)) {
 }
 
 State HitoriSolver::SteepestAscentHillClimbing(State initialState,
-                                 double (*heuristic)(State)) {
+                                               double (*heuristic)(State)) {
   // Initialize a currentState variable with the initial state
   State currentState = initialState;
   while (true) {
     // Check whether the current state is a goal
-    if (currentState.IsGoal()) {
+    if (IsGoal(currentState)) {
       return currentState;
     }
 
     // Generate the successors of the current state
     std::vector<State>* successors =
-        currentState.Successor(SearchType::HillClimbing, heuristic);
+        Successor(currentState, SearchType::HillClimbing, heuristic);
 
     // Find the state with the score (heuristic)
     auto bestSuccessor = std::min_element(
-        successors->begin(), successors->end(), StateLessComparator);
+        successors->begin(), successors->end(), StateLessComparator());
 
     // If there was a successor with a better score than the current tate,
     // continue the search with that successor. Otherwise
@@ -132,35 +232,23 @@ State HitoriSolver::StochasticHillClimbing(State initialState,
   State currentState = initialState;
   while (true) {
     // Check whether the current state is a goal
-    if (currentState.IsGoal()) {
+    if (IsGoal(currentState)) {
       return currentState;
     }
 
     // Generate the successors of the current state
     std::vector<State>* successors =
-        currentState.Successor(SearchType::HillClimbing, heuristic);
+        Successor(currentState, SearchType::HillClimbing, heuristic);
 
     // Now each state will be assigned a probability according to its score
     // (heuristic). The higher the score is, the lower the probability will be.
     // This is done using a softmax function
-    auto softmax = [](std::vector<double>& scores) {
-      double sum = 0.f;
-      for (auto it = scores.begin(); it != scores.end(); ++it) {
-        // Since we want higher scores to have less probability, we use
-        // exp(-x) instead of exp(x - MaximumScore).
-        *it = std::exp(-*it);
-        sum += *it;
-      }
-      for (auto it = scores.begin(); it != scores.end(); ++it) {
-        *it /= sum;
-      }
-    };
 
     // Create a new vector 'probabilities', which initially contains the score
     // of each successor (which are NOT probabilities)
     std::vector<double> probabilities;
-    for (auto it = successors->begin(); successors->end(); ++it) {
-      probabilities.push_back(it->score)
+    for (auto it = successors->begin(); it != successors->end(); ++it) {
+      probabilities.push_back(it->score);
     }
     // Apply softmax to 'probabilities' to get a probability distribution
     softmax(probabilities);
@@ -219,11 +307,16 @@ State HitoriSolver::KStartStochasticHillClimbing(State initialState,
 
   // Check the results from each thread and return the first one that is a goal
   for (auto it = results.begin(); it != results.end(); ++it) {
-    if (it->IsGoal()) {
+    if (IsGoal(*it)) {
       return *it;
     }
   }
 
+  return State();
+}
+State HitoriSolver::SimulatedAnnealing(State initialState,
+                                       double (*heuristic)(State),
+                                       std::vector<double>* (*scheduler)(int)) {
   return State();
 }
 }  // namespace HitoriSolverCore
