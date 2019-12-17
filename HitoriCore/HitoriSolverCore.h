@@ -67,6 +67,7 @@ class State {
  private:
   int _dimension;
   bool** _blackedOut;
+  int _level;
 
   // @TODO: Remove friend class declaration, only IsGoal remains a friend
   friend class HitoriSolver;
@@ -81,6 +82,12 @@ class HitoriSolver {
   bool IsGoal(State&);
   std::vector<State>* Successor(State, SearchType, double (*)(State));
 
+  bool IsFeasible(bool*, State);
+  void NShadeGenerator(int, std::vector<State>&, State);
+  void Shade(bool*, int, std::vector<State>&, State, int);
+  void PreProccess();
+  void PrintState(State);
+
   State GreedyBfs(State, double (*)(State));
   State AStar(State, double (*)(State));
   State SteepestAscentHillClimbing(State, double (*)(State));
@@ -93,5 +100,6 @@ class HitoriSolver {
  private:
   int _dimension;
   int** _gameBoard;
+  bool** _whitedOut;
 };
 }  // namespace HitoriSolverCore

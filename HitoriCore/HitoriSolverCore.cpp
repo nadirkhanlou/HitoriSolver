@@ -1,4 +1,6 @@
 #include "HitoriSolverCore.h"
+#include <fstream>
+#include <iostream>
 
 namespace HitoriSolverCore {
 State::State() : _dimension(0), score(0), costSoFar(0) {}
@@ -44,6 +46,7 @@ State& State::operator=(const State& other) {
   if (&other != this) {
     this->score = other.score;
     this->costSoFar = other.costSoFar;
+    this->_level = other._level;
     for (int i = 0; i < _dimension; ++i) {
       delete[] this->_blackedOut[i];
     }
@@ -74,7 +77,22 @@ State& State::operator=(State&& other) {
   return *this;
 }
 
-HitoriSolver::HitoriSolver(const char* filePath) {}
+HitoriSolver::HitoriSolver(const char* filePath) {
+  std::ifstream input;
+  input.open(filePath);
+
+  input >> _dimension;
+  _gameBoard = new int*[_dimension];
+
+  for (int i = 0; i < _dimension; i++) {
+    _gameBoard[i] = new int[_dimension];
+    for (int j = 0; j < _dimension; j++) {
+      input >> _gameBoard[i][j];
+    }
+  }
+
+  input.close();
+}
 
 HitoriSolver::~HitoriSolver() {}
 
@@ -120,7 +138,160 @@ bool HitoriSolver::IsGoal(State& s) {
 
 std::vector<State>* HitoriSolver::Successor(State currentState, SearchType searchType,
                                             double (*heuristic)(State)) {
-  return {};
+  std::vector<State> successors;
+
+  bool* cleanRow = new bool[_dimension];
+  for (int i = 0; i < _dimension; i++) {
+    cleanRow[i] = false;
+  }
+
+  if (IsFeasible(cleanRow, currentState)) {
+    State cleanRowState = currentState;
+    delete[] cleanRowState._blackedOut[currentState._level];
+    cleanRowState._blackedOut[currentState._level] = cleanRow;
+    cleanRowState._level++;
+    successors.push_back(cleanRowState);
+  }
+
+  for (int i = 1; i <= (_dimension + 1) / 2; i++) {
+    NShadeGenerator(i, successors, currentState);
+  }
+
+  return &successors;
+}
+
+bool HitoriSolver::IsFeasible(bool* shaded, State currentState) {
+  for (int i = 1; i < _dimension - 1; i++) {
+    if ((shaded[i] && shaded[i - 1]) || (shaded[i] && shaded[i + 1]))
+      return false;
+    if (shaded[i] && currentState._level > 0 &&
+        (currentState._blackedOut[currentState._level - 1][i]))
+      return false;
+    if (shaded[i] && currentState._level == 1 &&
+        currentState._blackedOut[currentState._level - 1][i + 1] &&
+        currentState._blackedOut[currentState._level - 1][i - 1])
+      return false;
+    if (shaded[i] && currentState._level > 1 &&
+        currentState._blackedOut[currentState._level - 2][i] &&
+        currentState._blackedOut[currentState._level - 1][i + 1] &&
+        currentState._blackedOut[currentState._level - 1][i - 1])
+      return false;
+  }
+
+  if (shaded[0]) {
+    if (currentState._level > 0 &&
+        currentState._blackedOut[currentState._level - 1][0])
+      return false;
+    if (currentState._level == 1 &&
+        currentState._blackedOut[currentState._level - 1][1])
+      return false;
+    if (currentState._level > 1 &&
+        currentState._blackedOut[currentState._level - 1][1] &&
+        currentState._blackedOut[currentState._level - 2][0])
+      return false;
+  }
+
+  if (shaded[_dimension - 1]) {
+    if (currentState._level > 0 &&
+        currentState._blackedOut[currentState._level - 1][_dimension - 1])
+      return false;
+    if (currentState._level == 1 &&
+        currentState._blackedOut[currentState._level - 1][_dimension - 2])
+      return false;
+    if (currentState._level > 1 &&
+        currentState._blackedOut[currentState._level - 1][_dimension - 2] &&
+        currentState._blackedOut[currentState._level - 2][_dimension - 1])
+      return false;
+  }
+
+  for (int i = 0; i < _dimension; i++) {
+    if (!shaded[i]) {
+      for (int j = i + 1; j < _dimension; j++) {
+        if (!shaded[j] && _gameBoard[currentState._level][i] ==
+                              _gameBoard[currentState._level][j])
+          return false;
+      }
+      for (int j = currentState._level - 1; j >= 0; j--) {
+        if (!currentState._blackedOut[j][i] &&
+            _gameBoard[j][i] == _gameBoard[currentState._level][i])
+          return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+void HitoriSolver::NShadeGenerator(int n, std::vector<State>& succcessorStates ,
+                                   State currentState) {
+  bool* tempShadedFlags = new bool[_dimension];
+  for (int i = 0; i < _dimension; i++) {
+    tempShadedFlags[i] = false;
+  }
+  for (int i = 0; i < _dimension; i++) {
+    Shade(tempShadedFlags, i, succcessorStates, currentState, n - 1);
+  }
+}
+
+void HitoriSolver::Shade(bool* shaded, int selectIndex, std::vector<State>& succcessorStates, State currentState, int recursiveLevel) {
+  if (currentState._blackedOut[currentState._level][selectIndex]) return;
+
+  shaded[selectIndex] = true;
+
+  if (recursiveLevel < 1) {
+    if (IsFeasible(shaded, currentState)) {
+      State newState = currentState;
+      for (int i = 0; i < _dimension; i++)
+        newState._blackedOut[newState._level][i] = shaded[i];
+      newState._level++;
+      succcessorStates.push_back(newState);
+    }
+    shaded[selectIndex] = false;
+    return;
+  }
+  for (int i = selectIndex; i < _dimension; i++) {
+    if (!shaded[i])
+      Shade(shaded, i, succcessorStates, currentState, recursiveLevel - 1);
+  }
+  shaded[selectIndex] = false;
+}
+
+void HitoriSolver::PreProccess() {
+  _whitedOut = new bool*[_dimension];
+
+  for (int i = 0; i < _dimension; i++) {
+    _whitedOut[i] = new bool[_dimension];
+    for (int j = 0; j < _dimension; j++) {
+      _whitedOut[i][j] = true;
+
+      for (int k = 0; k < _dimension; k++) {
+        if (_gameBoard[i][j] == _gameBoard[i][k] ||
+            _gameBoard[i][j] == _gameBoard[k][j])
+          _whitedOut[i][j] = false;
+      }
+    }
+  }
+
+  for (int i = 0; i < _dimension; i++) {
+    for (int j = 0; j < _dimension - 2; j++) {
+      if (_gameBoard[i][j] == _gameBoard[i][j + 2]) _whitedOut[i][j + 1] = true;
+      if (_gameBoard[j][i] == _gameBoard[j + 2][i]) _whitedOut[j + 1][i] = true;
+    }
+  }
+}
+
+void HitoriSolver::PrintState(State state) {
+  std::cout << "\n";
+  for (int i = 0; i < _dimension; i++) {
+    for (int j = 0; j < _dimension; j++) {
+      if (state._blackedOut[i][j]) {
+        std::cout << "# ";
+      } else {
+        std::cout << _gameBoard[i][j] << " ";
+      }
+    }
+    std::cout << "\n";
+  }
 }
 
 State HitoriSolver::GreedyBfs(State initialState, double (*heuristic)(State)) {
