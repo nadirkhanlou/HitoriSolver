@@ -1,12 +1,12 @@
 #include "HitoriSolverCore.h"
 #include <iostream>
 
-double h(HitoriSolverCore::State, int**) {
+double h(HitoriSolverCore::State) {
   return 0;
 }
 
 int main() {
-  HitoriSolverCore::HitoriSolver solver = HitoriSolverCore::HitoriSolver("12x12.txt");
+  HitoriSolverCore::HitoriSolver solver = HitoriSolverCore::HitoriSolver("15x15.txt");
 
   solver.PreProccess();
   HitoriSolverCore::State result =
