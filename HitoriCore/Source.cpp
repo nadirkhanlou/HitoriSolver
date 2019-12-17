@@ -1,6 +1,5 @@
-
-#include "HitoriSolverCore.h";
-#include <iostream>;
+#include "HitoriSolverCore.h"
+#include <iostream>
 
 double h(HitoriSolverCore::State) { return 0; }
 

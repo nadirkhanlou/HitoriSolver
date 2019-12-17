@@ -3,9 +3,28 @@
 #include <iostream>
 
 namespace HitoriSolverCore {
-State::State() : _dimension(0), score(0), costSoFar(0) {}
+// Softmax filter that turns a vector of real valued, positive numbers (which
+// are in this case heuristic values for successsors) into a probability
+// distribution. The 'alpha' factor can increase or decrease the preference of a
+// smaller valued heuristic (more attractive choice) over a larger valued one
+// (less attractive choice)
+void softmax(std::vector<double>& scores, double alpha = 1.0f) {
+  double sum = 0.f;
+  for (auto it = scores.begin(); it != scores.end(); ++it) {
+    // Since we want higher scores to have less probability, we use
+    // exp(-x) instead of exp(x - MaximumScore).
+    *it = std::exp(-*it * alpha);
+    sum += *it;
+  }
+  for (auto it = scores.begin(); it != scores.end(); ++it) {
+    *it /= sum;
+  }
+}
 
-State::State(int dimension) : _dimension(dimension), score(0), costSoFar(0) {
+State::State() : _dimension(0), _level(0), score(0), costSoFar(0) {}
+
+State::State(int dimension)
+    : _dimension(dimension), _level(0), score(0), costSoFar(0) {
   _blackedOut = new bool*[_dimension];
   for (int i = 0; i < _dimension; ++i) {
     _blackedOut[i] = new bool[_dimension]{};  // Initializes all values to false
@@ -13,11 +32,13 @@ State::State(int dimension) : _dimension(dimension), score(0), costSoFar(0) {
 }
 
 State::State(const State& other)
-    : score(other.score), costSoFar(other.costSoFar) {
+    : _level(other._level), score(other.score), costSoFar(other.costSoFar) {
   for (int i = 0; i < _dimension; ++i) {
-    delete[] this->_blackedOut[i];
+    // delete[] this->_blackedOut[i];
   }
-  delete this->_blackedOut;
+  if (this->_blackedOut) {
+    // delete this->_blackedOut;
+  }
   this->_dimension = other._dimension;
   this->_blackedOut = new bool*[_dimension];
   for (int i = 0; i < _dimension; ++i) {
@@ -29,6 +50,7 @@ State::State(const State& other)
 
 State::State(State&& other)
     : _dimension(other._dimension),
+      _level(other._level),
       score(other.score),
       costSoFar(other.costSoFar) {
   this->_blackedOut = other._blackedOut;
@@ -36,10 +58,14 @@ State::State(State&& other)
 }
 
 State::~State() {
-  for (int i = 0; i < _dimension; ++i) {
-    delete[] _blackedOut[i];
+  if (_blackedOut) {
+    for (int i = 0; i < _dimension; ++i) {
+      if (_blackedOut[i]) {
+        delete[] _blackedOut[i];
+      }
+    }
+    delete[] _blackedOut;
   }
-  delete[] _blackedOut;
 }
 
 State& State::operator=(const State& other) {
@@ -66,10 +92,13 @@ State& State::operator=(State&& other) {
   if (&other != this) {
     this->score = other.score;
     this->costSoFar = other.costSoFar;
-    for (int i = 0; i < _dimension; ++i) {
-      delete[] this->_blackedOut[i];
+    this->_level = other._level;
+    if (this->_blackedOut) {
+      for (int i = 0; i < _dimension; ++i) {
+        if (this->_blackedOut[i]) delete[] this->_blackedOut[i];
+      }
+      delete this->_blackedOut;
     }
-    delete this->_blackedOut;
     this->_dimension = other._dimension;
     this->_blackedOut = other._blackedOut;
     other._blackedOut = nullptr;
@@ -97,6 +126,8 @@ HitoriSolver::HitoriSolver(const char* filePath) {
 HitoriSolver::~HitoriSolver() {}
 
 bool HitoriSolver::IsGoal(State& s) {
+  std::cout << "hello\n";
+  std::cout << this->_dimension << ' ' << s._dimension;
   assert(this->_dimension == s._dimension);
 
   std::set<int> set;
@@ -136,8 +167,9 @@ bool HitoriSolver::IsGoal(State& s) {
   return true;
 }
 
-std::vector<State>* HitoriSolver::Successor(State currentState, SearchType searchType,
-                                            double (*heuristic)(State)) {
+std::vector<State> HitoriSolver::Successor(State currentState,
+                                           SearchType searchType,
+                                           double (*heuristic)(State)) {
   std::vector<State> successors;
 
   bool* cleanRow = new bool[_dimension];
@@ -157,7 +189,7 @@ std::vector<State>* HitoriSolver::Successor(State currentState, SearchType searc
     NShadeGenerator(i, successors, currentState);
   }
 
-  return &successors;
+  return successors;
 }
 
 bool HitoriSolver::IsFeasible(bool* shaded, State currentState) {
@@ -222,7 +254,7 @@ bool HitoriSolver::IsFeasible(bool* shaded, State currentState) {
   return true;
 }
 
-void HitoriSolver::NShadeGenerator(int n, std::vector<State>& succcessorStates ,
+void HitoriSolver::NShadeGenerator(int n, std::vector<State>& succcessorStates,
                                    State currentState) {
   bool* tempShadedFlags = new bool[_dimension];
   for (int i = 0; i < _dimension; i++) {
@@ -233,7 +265,9 @@ void HitoriSolver::NShadeGenerator(int n, std::vector<State>& succcessorStates ,
   }
 }
 
-void HitoriSolver::Shade(bool* shaded, int selectIndex, std::vector<State>& succcessorStates, State currentState, int recursiveLevel) {
+void HitoriSolver::Shade(bool* shaded, int selectIndex,
+                         std::vector<State>& succcessorStates,
+                         State currentState, int recursiveLevel) {
   if (currentState._blackedOut[currentState._level][selectIndex]) return;
 
   shaded[selectIndex] = true;
@@ -302,6 +336,7 @@ State HitoriSolver::GreedyBfs(State initialState, double (*heuristic)(State)) {
       priorityQueue;
   priorityQueue.push(initialState);
 
+  int level = -1;
   // Search until all possible states are checked
   while (!priorityQueue.empty()) {
     // Pop the state with the lowest score. This will be the state that is to be
@@ -309,18 +344,31 @@ State HitoriSolver::GreedyBfs(State initialState, double (*heuristic)(State)) {
     State currentState = priorityQueue.top();
     priorityQueue.pop();
 
-    // If currentState is the goal, return it
-    if (IsGoal(currentState)) {
-      return currentState;
+    // TEST
+    if (currentState._level > level) {
+      ++level;
+      std::cout << level << '\n';
     }
+    // TEST
+
+    // If currentState is the goal, return it
+    /*if (IsGoal(currentState)) {
+      return currentState;
+    }*/
     // currentState was not the goal. So we expand it in our search tree.
-    std::vector<State>* successors =
-        Successor(currentState, SearchType::GreedyBfs, heuristic);
-    for (auto it = successors->begin(); it != successors->end(); ++it) {
-      // @TODO: Add a visited states buffer
-      if (/* If *it was already visited */ true) {
-        priorityQueue.push(*it);
-        // @TODO: Add *it to the visited buffer
+    if (currentState._level < _dimension) {
+      std::vector<State> successors =
+          Successor(currentState, SearchType::GreedyBfs, heuristic);
+      for (auto it = successors.begin(); it != successors.end(); ++it) {
+        // @TODO: Add a visited states buffer
+        if (/* If *it was already visited */ true) {
+          priorityQueue.push(*it);
+          // @TODO: Add *it to the visited buffer
+        }
+      }
+    } else {
+      if (IsGoal(currentState)) {
+        return currentState;
       }
     }
   }
@@ -349,16 +397,16 @@ State HitoriSolver::AStar(State initialState, double (*heuristic)(State)) {
       return currentState;
     }
     // current_state was not the goal. So we expand it in our search tree.
-    std::vector<State>* successors =
+    std::vector<State> successors =
         Successor(currentState, SearchType::AStar, heuristic);
-    for (auto it = successors->begin(); it != successors->end(); ++it) {
+    for (auto it = successors.begin(); it != successors.end(); ++it) {
       // @TODO: Add a visited states buffer
       if (/* If *it was already visited */ true) {
         priorityQueue.push(*it);
         // @TODO: Add *it to the visited buffer
       }
     }
-    successors->clear();
+    successors.clear();
   }
 
   // The goal could not be found.
@@ -376,12 +424,12 @@ State HitoriSolver::SteepestAscentHillClimbing(State initialState,
     }
 
     // Generate the successors of the current state
-    std::vector<State>* successors =
+    std::vector<State> successors =
         Successor(currentState, SearchType::HillClimbing, heuristic);
 
     // Find the state with the score (heuristic)
-    auto bestSuccessor = std::min_element(
-        successors->begin(), successors->end(), StateLessComparator());
+    auto bestSuccessor = std::min_element(successors.begin(), successors.end(),
+                                          StateLessComparator());
 
     // If there was a successor with a better score than the current tate,
     // continue the search with that successor. Otherwise
@@ -408,7 +456,7 @@ State HitoriSolver::StochasticHillClimbing(State initialState,
     }
 
     // Generate the successors of the current state
-    std::vector<State>* successors =
+    std::vector<State> successors =
         Successor(currentState, SearchType::HillClimbing, heuristic);
 
     // Now each state will be assigned a probability according to its score
@@ -418,7 +466,7 @@ State HitoriSolver::StochasticHillClimbing(State initialState,
     // Create a new vector 'probabilities', which initially contains the score
     // of each successor (which are NOT probabilities)
     std::vector<double> probabilities;
-    for (auto it = successors->begin(); it != successors->end(); ++it) {
+    for (auto it = successors.begin(); it != successors.end(); ++it) {
       probabilities.push_back(it->score);
     }
     // Apply softmax to 'probabilities' to get a probability distribution
@@ -433,7 +481,7 @@ State HitoriSolver::StochasticHillClimbing(State initialState,
     for (unsigned int i = 0; i < probabilities.size(); ++i) {
       if (randomNumber >= low && randomNumber < low + probabilities[i]) {
         // The i'th successor (with probability = probabilities[i]) was selected
-        nextState = (*successors)[i];
+        nextState = (successors)[i];
         break;
       }
       low += probabilities[i];
