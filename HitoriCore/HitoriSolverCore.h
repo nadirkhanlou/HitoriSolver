@@ -25,20 +25,19 @@ class State {
   State();
   State(int);
   State(const State&);
-  State(State&&) noexcept;
+  State(State&&);
   ~State();
 
   State& operator=(const State&);
-  State& operator=(State&&) noexcept;
+  State& operator=(State&&);
 
+ private:
   int _dimension;
   bool** _blackedOut;
- private:
   int _level;
 
   // @TODO: Remove friend class declaration, only IsGoal remains a friend
   friend class HitoriSolver;
-  friend double h1(State, int**);
 };
 
 // Custom less and greater operators for State scores. Used in priority queues
@@ -61,19 +60,16 @@ class HitoriSolver {
   HitoriSolver(const char*);
   ~HitoriSolver();
 
-  State InitialState();
   bool IsGoal(State&);
-  std::vector<State> Successor(State, SearchType, double (*)(State, int**));
+  std::vector<State> Successor(State&, SearchType, double (*)(State));
 
-  bool IsFeasible(bool*, State);
-  void NShadeGenerator(int, std::vector<State>&, State);
-  void Shade(bool*, int, std::vector<State>&, State, int);
+  bool IsFeasible(bool*, State&);
+  void NShadeGenerator(int, std::vector<State>&, State&);
+  void Shade(bool*, int, std::vector<State>&, State&, int);
   void PreProccess();
   void PrintState(State);
 
-  double h1(State);
-
-  State GreedyBfs(State, double (*)(State, int**));
+  State GreedyBfs(State, double (*)(State));
   State AStar(State, double (*)(State));
   State SteepestAscentHillClimbing(State, double (*)(State));
   State StochasticHillClimbing(State, double (*)(State));

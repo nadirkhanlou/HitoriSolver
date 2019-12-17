@@ -169,7 +169,7 @@ bool HitoriSolver::IsGoal(State& s) {
   return true;
 }
 
-std::vector<State> HitoriSolver::Successor(State currentState,
+std::vector<State> HitoriSolver::Successor(State& currentState,
                                            SearchType searchType,
                                            double (*heuristic)(State, int**)) {
   std::vector<State> successors;
@@ -196,7 +196,7 @@ std::vector<State> HitoriSolver::Successor(State currentState,
   return successors;
 }
 
-bool HitoriSolver::IsFeasible(bool* shaded, State currentState) {
+bool HitoriSolver::IsFeasible(bool* shaded, State& currentState) {
   for (int i = 1; i < _dimension - 1; i++) {
     if ((shaded[i] && shaded[i - 1]) || (shaded[i] && shaded[i + 1]))
       return false;
@@ -259,7 +259,7 @@ bool HitoriSolver::IsFeasible(bool* shaded, State currentState) {
 }
 
 void HitoriSolver::NShadeGenerator(int n, std::vector<State>& succcessorStates,
-                                   State currentState) {
+                                   State& currentState) {
   bool* tempShadedFlags = new bool[_dimension];
   for (int i = 0; i < _dimension; i++) {
     tempShadedFlags[i] = false;
@@ -271,7 +271,7 @@ void HitoriSolver::NShadeGenerator(int n, std::vector<State>& succcessorStates,
 
 void HitoriSolver::Shade(bool* shaded, int selectIndex,
                          std::vector<State>& succcessorStates,
-                         State currentState, int recursiveLevel) {
+                         State& currentState, int recursiveLevel) {
   if (currentState._blackedOut[currentState._level][selectIndex]) return;
 
   shaded[selectIndex] = true;
