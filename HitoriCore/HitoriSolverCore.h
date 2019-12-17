@@ -61,11 +61,11 @@ class HitoriSolver {
   ~HitoriSolver();
 
   bool IsGoal(State&);
-  std::vector<State> Successor(State, SearchType, double (*)(State));
+  std::vector<State> Successor(State&, SearchType, double (*)(State));
 
-  bool IsFeasible(bool*, State);
-  void NShadeGenerator(int, std::vector<State>&, State);
-  void Shade(bool*, int, std::vector<State>&, State, int);
+  bool IsFeasible(bool*, State&);
+  void NShadeGenerator(int, std::vector<State>&, State&);
+  void Shade(bool*, int, std::vector<State>&, State&, int);
   void PreProccess();
   void PrintState(State);
 
