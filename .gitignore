@@ -56,3 +56,4 @@
 *.metagen
 *.vcxproj.filters
 *.vcxproj.user
+*.txt
