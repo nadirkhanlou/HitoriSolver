@@ -171,7 +171,7 @@ bool HitoriSolver::IsGoal(State& s) {
 
 std::vector<State> HitoriSolver::Successor(State& currentState,
                                            SearchType searchType,
-                                           double (*heuristic)(State)) {
+                                           double (*heuristic)(State, int**)) {
   std::vector<State> successors;
 
   bool* cleanRow = new bool[_dimension];
@@ -191,7 +191,7 @@ std::vector<State> HitoriSolver::Successor(State& currentState,
     NShadeGenerator(i, successors, currentState);
   }
 
-  for (auto it : successors) it.score = heuristic(it);
+  for (auto it : successors) it.score = heuristic(it, _gameBoard);
 
   return successors;
 }
@@ -334,7 +334,8 @@ void HitoriSolver::PrintState(State state) {
   }
 }
 
-State HitoriSolver::GreedyBfs(State initialState, double (*heuristic)(State)) {
+State HitoriSolver::GreedyBfs(State initialState,
+                              double (*heuristic)(State, int**)) {
   // Create a new minimum priority queue (min heap) and insert the initial state
   // into it. States with compared to each other based on their score =
   // heuristic. States with lower scores are higher up in the heap.
@@ -383,7 +384,8 @@ State HitoriSolver::GreedyBfs(State initialState, double (*heuristic)(State)) {
   return State();
 }
 
-State HitoriSolver::AStar(State initialState, double (*heuristic)(State)) {
+State HitoriSolver::AStar(State initialState,
+                          double (*heuristic)(State, int**)) {
   // Create a new minimum priority queue (min heap) and insert the initial state
   // into it. States with compared to each other based on their score = (cost so
   // far + heuristic). States with lower scores are higher up in the heap.
@@ -420,7 +422,8 @@ State HitoriSolver::AStar(State initialState, double (*heuristic)(State)) {
 }
 
 State HitoriSolver::SteepestAscentHillClimbing(State initialState,
-                                               double (*heuristic)(State)) {
+                                               double (*heuristic)(State,
+                                                                   int**)) {
   // Initialize a currentState variable with the initial state
   State currentState = initialState;
   while (true) {
@@ -452,7 +455,7 @@ State HitoriSolver::SteepestAscentHillClimbing(State initialState,
 }
 
 State HitoriSolver::StochasticHillClimbing(State initialState,
-                                           double (*heuristic)(State)) {
+                                           double (*heuristic)(State, int**)) {
   // Initialize a currentState variable with the initial state
   State currentState = initialState;
   while (true) {
@@ -507,12 +510,13 @@ State HitoriSolver::StochasticHillClimbing(State initialState,
 }
 
 State HitoriSolver::KStartSteepestAscentHillClimbing(
-    State initialState, double (*heuristic)(State)) {
+    State initialState, double (*heuristic)(State, int**)) {
   return State();
 }
 
 State HitoriSolver::KStartStochasticHillClimbing(State initialState,
-                                                 double (*heuristic)(State)) {
+                                                 double (*heuristic)(State,
+                                                                     int**)) {
   // Use the maximum number of threads available
   omp_set_num_threads(omp_get_max_threads());
 
@@ -540,7 +544,7 @@ State HitoriSolver::KStartStochasticHillClimbing(State initialState,
   return State();
 }
 State HitoriSolver::SimulatedAnnealing(State initialState,
-                                       double (*heuristic)(State),
+                                       double (*heuristic)(State, int**),
                                        std::vector<double>* (*scheduler)(int)) {
   return State();
 }
