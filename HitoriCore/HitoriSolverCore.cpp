@@ -21,24 +21,28 @@ void softmax(std::vector<double>& scores, double alpha = 1.0f) {
   }
 }
 
-State::State() : _dimension(0), _level(0), score(0), costSoFar(0) {}
+State::State()
+    : _dimension(0), _level(0), score(0), costSoFar(0), _blackedOut(nullptr) {}
 
 State::State(int dimension)
-    : _dimension(dimension), _level(0), score(0), costSoFar(0) {
-  _blackedOut = new bool*[_dimension];
+    : _dimension(dimension),
+      _level(0),
+      score(0),
+      costSoFar(0),
+      _blackedOut(new bool*[_dimension]) {
   for (int i = 0; i < _dimension; ++i) {
-    _blackedOut[i] = new bool[_dimension]{};  // Initializes all values to false
+    _blackedOut[i] = new bool[_dimension];
+    for (int j = 0; j < _dimension; ++j) {
+      _blackedOut[i][j] = false;
+    }
   }
 }
 
 State::State(const State& other)
     : _level(other._level), score(other.score), costSoFar(other.costSoFar) {
-  for (int i = 0; i < _dimension; ++i) {
-    // delete[] this->_blackedOut[i];
-  }
-  if (this->_blackedOut) {
-    // delete this->_blackedOut;
-  }
+  /*for (int i = 0; i < _dimension; ++i) {
+    delete[] this->_blackedOut[i];
+  }*/
   this->_dimension = other._dimension;
   this->_blackedOut = new bool*[_dimension];
   for (int i = 0; i < _dimension; ++i) {
@@ -48,24 +52,21 @@ State::State(const State& other)
   }
 }
 
-State::State(State&& other)
+ State::State(State&& other) noexcept
     : _dimension(other._dimension),
       _level(other._level),
       score(other.score),
       costSoFar(other.costSoFar) {
   this->_blackedOut = other._blackedOut;
   other._blackedOut = nullptr;
+  other._dimension = 0;
 }
 
 State::~State() {
-  if (_blackedOut) {
-    for (int i = 0; i < _dimension; ++i) {
-      if (_blackedOut[i]) {
-        delete[] _blackedOut[i];
-      }
-    }
-    delete[] _blackedOut;
+  for (int i = 0; i < _dimension; ++i) {
+    delete[] _blackedOut[i];
   }
+  delete[] _blackedOut;
 }
 
 State& State::operator=(const State& other) {
@@ -76,7 +77,7 @@ State& State::operator=(const State& other) {
     for (int i = 0; i < _dimension; ++i) {
       delete[] this->_blackedOut[i];
     }
-    delete this->_blackedOut;
+    delete[] this->_blackedOut;
     this->_dimension = other._dimension;
     this->_blackedOut = new bool*[_dimension];
     for (int i = 0; i < _dimension; ++i) {
@@ -88,20 +89,19 @@ State& State::operator=(const State& other) {
   return *this;
 }
 
-State& State::operator=(State&& other) {
+ State& State::operator=(State&& other) noexcept {
   if (&other != this) {
     this->score = other.score;
     this->costSoFar = other.costSoFar;
     this->_level = other._level;
-    if (this->_blackedOut) {
-      for (int i = 0; i < _dimension; ++i) {
-        if (this->_blackedOut[i]) delete[] this->_blackedOut[i];
-      }
-      delete this->_blackedOut;
+    for (int i = 0; i < _dimension; ++i) {
+      delete[] this->_blackedOut[i];
     }
+    delete[] this->_blackedOut;
     this->_dimension = other._dimension;
     this->_blackedOut = other._blackedOut;
     other._blackedOut = nullptr;
+    other._dimension = 0;
   }
   return *this;
 }
@@ -112,22 +112,24 @@ HitoriSolver::HitoriSolver(const char* filePath) {
 
   input >> _dimension;
   _gameBoard = new int*[_dimension];
+  _whitedOut = new bool*[_dimension];
 
   for (int i = 0; i < _dimension; i++) {
     _gameBoard[i] = new int[_dimension];
+    _whitedOut[i] = new bool[_dimension];
     for (int j = 0; j < _dimension; j++) {
       input >> _gameBoard[i][j];
+      _whitedOut[i][j] = false;
     }
   }
-
   input.close();
 }
 
 HitoriSolver::~HitoriSolver() {}
 
+State HitoriSolver::InitialState() { return State(_dimension); }
+
 bool HitoriSolver::IsGoal(State& s) {
-  std::cout << "hello\n";
-  std::cout << this->_dimension << ' ' << s._dimension;
   assert(this->_dimension == s._dimension);
 
   std::set<int> set;
@@ -189,10 +191,12 @@ std::vector<State> HitoriSolver::Successor(State& currentState,
     NShadeGenerator(i, successors, currentState);
   }
 
+  for (auto it : successors) it.score = heuristic(it);
+
   return successors;
 }
 
-bool HitoriSolver::IsFeasible(bool* shaded, State& currentState) {
+bool HitoriSolver::IsFeasible(bool* shaded, const State& currentState) {
   for (int i = 1; i < _dimension - 1; i++) {
     if ((shaded[i] && shaded[i - 1]) || (shaded[i] && shaded[i + 1]))
       return false;
@@ -255,19 +259,20 @@ bool HitoriSolver::IsFeasible(bool* shaded, State& currentState) {
 }
 
 void HitoriSolver::NShadeGenerator(int n, std::vector<State>& succcessorStates,
-                                   State& currentState) {
+                                   const State& currentState) {
   bool* tempShadedFlags = new bool[_dimension];
   for (int i = 0; i < _dimension; i++) {
     tempShadedFlags[i] = false;
   }
   for (int i = 0; i < _dimension; i++) {
-    Shade(tempShadedFlags, i, succcessorStates, currentState, n - 1);
+    Shade(tempShadedFlags, i, succcessorStates, currentState,
+                           n - 1);
   }
 }
 
 void HitoriSolver::Shade(bool* shaded, int selectIndex,
                          std::vector<State>& succcessorStates,
-                         State& currentState, int recursiveLevel) {
+                         const State& currentState, int recursiveLevel) {
   if (currentState._blackedOut[currentState._level][selectIndex]) return;
 
   shaded[selectIndex] = true;
@@ -275,8 +280,10 @@ void HitoriSolver::Shade(bool* shaded, int selectIndex,
   if (recursiveLevel < 1) {
     if (IsFeasible(shaded, currentState)) {
       State newState = currentState;
-      for (int i = 0; i < _dimension; i++)
+      for (int i = 0; i < _dimension; i++) {
         newState._blackedOut[newState._level][i] = shaded[i];
+        if (shaded[i]) newState.costSoFar += 1;
+      }
       newState._level++;
       succcessorStates.push_back(newState);
     }
@@ -291,8 +298,6 @@ void HitoriSolver::Shade(bool* shaded, int selectIndex,
 }
 
 void HitoriSolver::PreProccess() {
-  _whitedOut = new bool*[_dimension];
-
   for (int i = 0; i < _dimension; i++) {
     _whitedOut[i] = new bool[_dimension];
     for (int j = 0; j < _dimension; j++) {
@@ -336,7 +341,7 @@ State HitoriSolver::GreedyBfs(State initialState, double (*heuristic)(State)) {
       priorityQueue;
   priorityQueue.push(initialState);
 
-  int level = -1;
+  int level = 0;
   // Search until all possible states are checked
   while (!priorityQueue.empty()) {
     // Pop the state with the lowest score. This will be the state that is to be

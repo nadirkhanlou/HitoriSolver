@@ -25,11 +25,11 @@ class State {
   State();
   State(int);
   State(const State&);
-  State(State&&);
+  State(State&&) noexcept;
   ~State();
 
   State& operator=(const State&);
-  State& operator=(State&&);
+  State& operator=(State&&) noexcept;
 
  private:
   int _dimension;
@@ -60,12 +60,13 @@ class HitoriSolver {
   HitoriSolver(const char*);
   ~HitoriSolver();
 
+  State InitialState();
   bool IsGoal(State&);
   std::vector<State> Successor(State&, SearchType, double (*)(State));
 
-  bool IsFeasible(bool*, State&);
-  void NShadeGenerator(int, std::vector<State>&, State&);
-  void Shade(bool*, int, std::vector<State>&, State&, int);
+  bool IsFeasible(bool*, const State&);
+  void NShadeGenerator(int, std::vector<State>&, const State&);
+  void Shade(bool*, int, std::vector<State>&, const State&, int);
   void PreProccess();
   void PrintState(State);
 
