@@ -324,9 +324,10 @@ void HitoriSolver::PrintState(State state) {
   for (int i = 0; i < _dimension; i++) {
     for (int j = 0; j < _dimension; j++) {
       if (state._blackedOut[i][j]) {
-        std::cout << "# ";
+        std::cout << std::setfill(' ') << std::setw(DIGITS(_dimension)) << '#' << ' ';
       } else {
-        std::cout << _gameBoard[i][j] << " ";
+        std::cout << std::setfill(' ') << std::setw(DIGITS(_dimension))
+                  << _gameBoard[i][j] << ' ';
       }
     }
     std::cout << "\n";

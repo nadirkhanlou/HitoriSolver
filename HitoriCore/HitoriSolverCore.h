@@ -8,9 +8,11 @@
 #include <vector>
 #include <set>
 #include <assert.h>
+#include <iomanip>
+
+#define DIGITS(num) (num > 0 ? (int)std::log10((double)num) + 1 : 1)
 
 namespace HitoriSolverCore {
-
 enum class SearchType { GreedyBfs, AStar, HillClimbing, SimulatedAnnealing };
 
 class State {
