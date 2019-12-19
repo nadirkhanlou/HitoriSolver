@@ -3,7 +3,7 @@
 #include <fstream>
 #include <iostream>
 
-//#define PERMUTATION_SUCCESSOR
+#define PERMUTATION_SUCCESSOR
 
 namespace HitoriSolverCore {
 // Softmax filter that turns a vector of real valued, positive numbers (which
@@ -210,7 +210,7 @@ std::vector<State> HitoriSolver::PermutationSuccessor(
     successors.push_back(cleanRowState);
   }
 
-  for (int i = 1; i <= (_dimension + 1) / 2; i++) {
+  for (int i = std::max(_rowConflicts[currentState._level], 1); i <= std::min((_dimension + 1) / 2, _rowMaxShade[currentState._level]); i++) {
     NShadeGenerator(i, successors, currentState);
   }
 
@@ -557,7 +557,7 @@ void HitoriSolver::NShadeGenerator(int n, std::vector<State>& succcessorStates,
   for (int i = 0; i < _dimension; i++) {
     tempShadedFlags[i] = false;
   }
-  for (int i = 0; i < _dimension; i++) {
+  for (int i = 0; i < _dimension - n + 1; i++) {
     Shade(tempShadedFlags, i, succcessorStates, currentState, n - 1);
   }
 }
@@ -590,7 +590,7 @@ void HitoriSolver::Shade(bool* shaded, int selectIndex,
     shaded[selectIndex] = false;
     return;
   }
-  for (int i = selectIndex; i < _dimension; i++) {
+  for (int i = selectIndex + 2; i < _dimension - recursiveLevel + 1; i++) {
     if (!shaded[i])
       Shade(shaded, i, succcessorStates, currentState, recursiveLevel - 1);
   }
@@ -617,6 +617,46 @@ void HitoriSolver::PreProccess() {
       if (_gameBoard[j][i] == _gameBoard[j + 2][i]) _whitedOut[j + 1][i] = true;
     }
   }
+
+  _rowConflicts = new int[_dimension];
+  _rowMaxShade = new int[_dimension];
+  for (int L = 0; L < _dimension; L++) {
+    bool* conflictsCounter = new bool[_dimension];
+    _rowConflicts[L] = 0;
+    _rowMaxShade[L] = 0;
+    for (int i = 0; i < _dimension; i++) {
+      conflictsCounter[i] = false;
+    }
+    for (int i = 0; i < _dimension; i++) {
+      if (!conflictsCounter[i]) {
+        for (int j = i + 1; j < _dimension; j++) {
+          if (_gameBoard[L][i] ==
+              _gameBoard[L][j]) {
+            conflictsCounter[j] = true;
+            _rowConflicts[L]++;
+            _rowMaxShade[L]++;
+            if (!conflictsCounter[i]) {
+              conflictsCounter[i] = true;
+              _rowMaxShade[L]++;
+            }
+          }
+        }
+        if (conflictsCounter[i]) continue;
+
+        for (int j = 0; j < _dimension; j++) {
+          if (j != i) {
+            if (_gameBoard[L][i] == _gameBoard[j][i]) {
+              _rowMaxShade[L]++;
+              break;
+            }
+          }
+        }
+
+      }
+    }
+    delete[] conflictsCounter;
+  }
+  
 }
 
 void HitoriSolver::PrintState(const State& currentState) {

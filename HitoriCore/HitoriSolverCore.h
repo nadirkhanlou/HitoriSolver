@@ -101,5 +101,7 @@ class HitoriSolver {
   int _dimension;
   int** _gameBoard;
   bool** _whitedOut;
+  int* _rowConflicts;
+  int* _rowMaxShade;
 };
 }  // namespace HitoriSolverCore
