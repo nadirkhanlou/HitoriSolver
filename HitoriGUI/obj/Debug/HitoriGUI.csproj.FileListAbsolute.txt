@@ -1,8 +1,0 @@
-C:\Users\InVaderrr\source\repos\HitoriSolver\HitoriGUI\bin\Debug\HitoriGUI.exe.config
-C:\Users\InVaderrr\source\repos\HitoriSolver\HitoriGUI\bin\Debug\HitoriGUI.exe
-C:\Users\InVaderrr\source\repos\HitoriSolver\HitoriGUI\bin\Debug\HitoriGUI.pdb
-C:\Users\InVaderrr\source\repos\HitoriSolver\HitoriGUI\obj\Debug\HitoriGUI.csprojAssemblyReference.cache
-C:\Users\InVaderrr\source\repos\HitoriSolver\HitoriGUI\obj\Debug\HitoriGUI.Properties.Resources.resources
-C:\Users\InVaderrr\source\repos\HitoriSolver\HitoriGUI\obj\Debug\HitoriGUI.csproj.GenerateResource.cache
-C:\Users\InVaderrr\source\repos\HitoriSolver\HitoriGUI\obj\Debug\HitoriGUI.exe
-C:\Users\InVaderrr\source\repos\HitoriSolver\HitoriGUI\obj\Debug\HitoriGUI.pdb
