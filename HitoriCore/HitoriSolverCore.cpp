@@ -3,7 +3,7 @@
 #include <fstream>
 #include <iostream>
 
-#define PERMUTATION_SUCCESSOR
+//#define PERMUTATION_SUCCESSOR
 
 namespace HitoriSolverCore {
 // Softmax filter that turns a vector of real valued, positive numbers (which
@@ -237,54 +237,44 @@ std::vector<State> HitoriSolver::NextConfilctSuccessor(
     div_t resultD = div(I, _dimension);
     int i = resultD.quot;
     int j = resultD.rem;
+    if (currentState._blackedOut[i][j]) continue;
 
-    if (!currentState._blackedOut[i][j]) {
-      std::vector<std::pair<int, int>> confilcts;
-      for (int k = 0; k < _dimension; ++k) {
-        if (k != j && !currentState._blackedOut[i][k] &&
-            _gameBoard[i][j] == _gameBoard[i][k]) {
-          confilcts.push_back(std::make_pair(i, k));
-        }
+    std::vector<std::pair<int, int>> confilcts;
+    for (int k = 0; k < _dimension; ++k) {
+      if (k != j && !currentState._blackedOut[i][k] &&
+          _gameBoard[i][j] == _gameBoard[i][k]) {
+        confilcts.push_back(std::make_pair(i, k));
       }
-      for (int k = 0; k < _dimension; ++k) {
-        if (k != i && !currentState._blackedOut[k][j] &&
-            _gameBoard[i][j] == _gameBoard[k][j]) {
-          confilcts.push_back(std::make_pair(k, j));
-        }
+      if (k != i && !currentState._blackedOut[k][j] &&
+          _gameBoard[i][j] == _gameBoard[k][j]) {
+        confilcts.push_back(std::make_pair(k, j));
       }
-      if (!confilcts.empty()) {
-        State onlyOneShaded = currentState;
-        onlyOneShaded._level = I;
-        onlyOneShaded._blackedOut[i][j] = true;
-        onlyOneShaded.costSoFar += 1;
+    }
 
-        if (IsFeasible(onlyOneShaded)) {
-          successors.push_back(onlyOneShaded);
-        }
-        /* else {
-          PrintState(onlyOneShaded);
-          std::cout << "\n";
-        }*/
+    if (!confilcts.empty()) {
+      State onlyOneShaded = currentState;
+      onlyOneShaded._level = I;
+      onlyOneShaded._blackedOut[i][j] = true;
+      onlyOneShaded.costSoFar += 1;
 
-        State shadedConfilcts = currentState;
-        shadedConfilcts._level = I;
-
-        for (auto it = confilcts.begin(); it != confilcts.end(); ++it) {
-          // shadedConfilcts._level++;
-          shadedConfilcts._blackedOut[(*it).first][(*it).second] = true;
-          shadedConfilcts.costSoFar += 1;
-        }
-
-        if (IsFeasible(shadedConfilcts)) {
-          successors.push_back(shadedConfilcts);
-        }
-        /* else {
-          PrintState(shadedConfilcts);
-          std::cout << "\n";
-        }*/
-
-        if (!successors.empty()) break;
+      if (IsFeasible(onlyOneShaded)) {
+        successors.push_back(onlyOneShaded);
       }
+
+      State shadedConfilcts = currentState;
+      shadedConfilcts._level = I;
+
+      for (auto it = confilcts.begin(); it != confilcts.end(); ++it) {
+        shadedConfilcts._blackedOut[(*it).first][(*it).second] = true;
+        shadedConfilcts.costSoFar += 1;
+      }
+
+      if (IsFeasible(shadedConfilcts)) {
+        shadedConfilcts._level++;
+        successors.push_back(shadedConfilcts);
+      }
+
+      if (!successors.empty()) break;
     }
   }
 

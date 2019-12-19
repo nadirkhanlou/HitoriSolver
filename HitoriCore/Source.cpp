@@ -2,9 +2,9 @@
 #include "HitoriSolverCore.h"
 
 
-//#define BFS
+#define BFS
 //#define GREEDY_BFS
-#define A_STAR
+//#define A_STAR
 //#define HILL_CLIMBING
 //#define S_HILL_CLIMBING
 
@@ -12,7 +12,7 @@ double h(const HitoriSolverCore::State&, int**) { return 0; }
 
 int main() {
   HitoriSolverCore::HitoriSolver solver =
-      HitoriSolverCore::HitoriSolver("17x17.txt");
+      HitoriSolverCore::HitoriSolver("sample1.txt");
 
   solver.PreProccess();
 
