@@ -82,6 +82,7 @@ class HitoriSolver {
 
   static void PrintState(const State&, int**);
   static double HeuristicFunction1(const State&, int**);
+  static double HeuristicFunction2(const State&, int**);
 
   State GreedyBfs(State, double (*)(const State&, int**));
   State AStar(State, double (*)(const State&, int**));
