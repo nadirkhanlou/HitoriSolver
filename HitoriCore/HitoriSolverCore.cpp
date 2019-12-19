@@ -3,7 +3,7 @@
 #include <fstream>
 #include <iostream>
 
-//#define PERMUTATION_SUCCESSOR
+#define PERMUTATION_SUCCESSOR
 
 namespace HitoriSolverCore {
 // Softmax filter that turns a vector of real valued, positive numbers (which

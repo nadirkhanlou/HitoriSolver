@@ -3,8 +3,8 @@
 
 
 //#define BFS
-#define GREEDY_BFS
-//#define A_STAR
+//#define GREEDY_BFS
+#define A_STAR
 //#define HILL_CLIMBING
 //#define S_HILL_CLIMBING
 
@@ -12,7 +12,7 @@ double h(const HitoriSolverCore::State&, int**) { return 0; }
 
 int main() {
   HitoriSolverCore::HitoriSolver solver =
-      HitoriSolverCore::HitoriSolver("12x12.txt");
+      HitoriSolverCore::HitoriSolver("17x17.txt");
 
   solver.PreProccess();
 
@@ -30,7 +30,7 @@ int main() {
 #ifdef A_STAR
   HitoriSolverCore::State result =
       solver.AStar(solver.InitialState(),
-                   HitoriSolverCore::HitoriSolver::HeuristicFunction2);
+                   HitoriSolverCore::HitoriSolver::HeuristicFunction1);
 #endif
 
 #ifdef HILL_CLIMBING
