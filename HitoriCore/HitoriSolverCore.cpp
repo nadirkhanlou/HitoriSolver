@@ -1,7 +1,8 @@
 #include "HitoriSolverCore.h"
-
 #include <fstream>
 #include <iostream>
+
+#define PERMUTATION_SUCCESSOR
 
 namespace HitoriSolverCore {
 // Softmax filter that turns a vector of real valued, positive numbers (which
@@ -133,6 +134,11 @@ State HitoriSolver::InitialState() { return State(_dimension); }
 bool HitoriSolver::IsGoal(State& s) {
   assert(this->_dimension == s._dimension);
 
+#ifdef PERMUTATION_SUCCESSOR
+  if (s._level < _dimension) return false;
+#endif
+
+
   std::set<int> set;
   int count;
 
@@ -170,7 +176,8 @@ bool HitoriSolver::IsGoal(State& s) {
   return true;
 }
 
-std::vector<State> HitoriSolver::Successor(State& currentState,
+std::vector<State> HitoriSolver::PermutationSuccessor(
+    State& currentState,
                                            SearchType searchType,
                                            double (*heuristic)(const State&,
                                                                int**)) {
@@ -209,7 +216,8 @@ std::vector<State> HitoriSolver::Successor(State& currentState,
   return successors;
 }
 
-std::vector<State> HitoriSolver::Successor2(State& currentState,
+std::vector<State> HitoriSolver::NextConfilctSuccessor(
+    State& currentState,
                                             SearchType searchType,
                                             double (*heuristic)(const State&,
                                                                 int**)) {
@@ -283,6 +291,18 @@ std::vector<State> HitoriSolver::Successor2(State& currentState,
   }
 
   return successors;
+}
+
+std::vector<State> HitoriSolver::Successor(State& currentState,
+                                           SearchType searchType,
+                                           double (*heuristic)(const State&,
+                                                               int**)) {
+#ifdef PERMUTATION_SUCCESSOR
+  return PermutationSuccessor(currentState, searchType, heuristic);
+#endif  // PERMUTATION_SUCCESSOR
+#ifndef PERMUTATION_SUCCESSOR
+  return NextConfilctSuccessor(currentState, searchType, heuristic);
+#endif  // !PERMUTATION_SUCCESSOR
 }
 
 bool HitoriSolver::IsFeasible(const State& currentState) {
@@ -449,7 +469,7 @@ bool HitoriSolver::IsFeasibleSurround(const State& currentState, int x, int y) {
     return false;*/
 
 
-  if (((x >= _dimension - 2 || currentState._blackedOut[x + 2][y]) &&
+    if (((x >= _dimension - 2 || currentState._blackedOut[x + 2][y]) &&
        (x < _dimension - 1 &&
         (y > _dimension - 1 || currentState._blackedOut[x + 1][y + 1])) &&
        (x < _dimension - 1 &&
@@ -464,10 +484,12 @@ bool HitoriSolver::IsFeasibleSurround(const State& currentState, int x, int y) {
        (y < _dimension - 1 &&
         (x <= 0 || currentState._blackedOut[x - 1][y + 1]))) ||
       ((y <= 1 || currentState._blackedOut[x][y - 2]) &&
-       (y > 0 && (x >= _dimension - 1 ||
-        currentState._blackedOut[x + 1][y - 1])) &&
-       (y > 0 && (x <= 0 ||  currentState._blackedOut[x - 1][y - 1]))))
+       (y > 0 &&
+        (x >= _dimension - 1 || currentState._blackedOut[x + 1][y - 1])) &&
+       (y > 0 && (x <= 0 || currentState._blackedOut[x - 1][y - 1]))))
     return false;
+  
+
 
   return true;
 }
@@ -664,45 +686,26 @@ State HitoriSolver::GreedyBfs(State initialState,
     State currentState = priorityQueue.top();
     priorityQueue.pop();
 
-    // TEST
-    /*if (currentState._level > level) {
-      ++level;
-      std::cout << level << '\n';
-    }*/
-    //std::cout << "\n\n" << currentState._level;
-    // TEST
-
-   /* std::cout << currentState._level << "\n";
-
-    PrintState(currentState);
-    std::cout << "\n";*/
-
+    // If currentState is the goal, return it
     if (IsGoal(currentState)) {
       std::cout << "count = " << counter << "\n";
       return currentState;
     }
-    
 
-    // If currentState is the goal, return it
-    /*if (IsGoal(currentState)) {
-      return currentState;
-    }*/
+    
     // currentState was not the goal. So we expand it in our search tree.
-    /*if (currentState._level < _dimension) {*/
-      std::vector<State> successors =
-          Successor2(currentState, SearchType::GreedyBfs, heuristic);
-      for (auto it = successors.begin(); it != successors.end(); ++it) {
-        // @TODO: Add a visited states buffer
-        if (/* If *it was already visited */ true) {
-          priorityQueue.push(*it);
-          counter++;
-          // @TODO: Add *it to the visited buffer
-        }
+    std::vector<State> successors =
+        Successor(currentState, SearchType::GreedyBfs, heuristic);
+
+    for (auto it = successors.begin(); it != successors.end(); ++it) {
+      // @TODO: Add a visited states buffer
+      if (/* If *it was already visited */ true) {
+        priorityQueue.push(*it);
+        counter++;
+        // @TODO: Add *it to the visited buffer
       }
-    /*} else {*/
-      
     }
-  
+  }
 
   // The goal could not be found.
   return State();
@@ -732,6 +735,7 @@ State HitoriSolver::AStar(State initialState,
       // current_state was not the goal. So we expand it in our search tree.
       std::vector<State> successors =
           Successor(currentState, SearchType::AStar, heuristic);
+
       for (auto it = successors.begin(); it != successors.end(); ++it) {
         // @TODO: Add a visited states buffer
         if (/* If *it was already visited */ true) {
@@ -803,6 +807,7 @@ State HitoriSolver::StochasticHillClimbing(State initialState,
     // Generate the successors of the current state
     std::vector<State> successors =
         Successor(currentState, SearchType::HillClimbing, heuristic);
+
 
     // Now each state will be assigned a probability according to its score
     // (heuristic). The higher the score is, the lower the probability will be.
