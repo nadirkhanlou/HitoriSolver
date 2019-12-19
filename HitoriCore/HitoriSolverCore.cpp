@@ -2,7 +2,7 @@
 #include <fstream>
 #include <iostream>
 
-#define PERMUTATION_SUCCESSOR
+//#define PERMUTATION_SUCCESSOR
 
 namespace HitoriSolverCore {
 // Softmax filter that turns a vector of real valued, positive numbers (which
@@ -247,14 +247,11 @@ std::vector<State> HitoriSolver::NextConfilctSuccessor(
         State onlyOneShaded = currentState;
         onlyOneShaded._level = I;
         onlyOneShaded._blackedOut[i][j] = true;
+        onlyOneShaded.costSoFar++;
 
         if (IsFeasible(onlyOneShaded)) {
           successors.push_back(onlyOneShaded);
         }
-        /* else {
-          PrintState(onlyOneShaded);
-          std::cout << "\n";
-        }*/
 
         State shadedConfilcts = currentState;
         shadedConfilcts._level = I;
@@ -262,6 +259,7 @@ std::vector<State> HitoriSolver::NextConfilctSuccessor(
         for (auto it = confilcts.begin(); it != confilcts.end(); ++it) {
           // shadedConfilcts._level++;
           shadedConfilcts._blackedOut[(*it).first][(*it).second] = true;
+          shadedConfilcts.costSoFar++;
         }
 
         if (IsFeasible(shadedConfilcts)) {
@@ -674,6 +672,7 @@ State HitoriSolver::GreedyBfs(State initialState,
   // heuristic. States with lower scores are higher up in the heap.
   std::priority_queue<State, std::vector<State>, StateGreaterComparator>
       priorityQueue;
+  
   priorityQueue.push(initialState);
 
   int counter = 0;

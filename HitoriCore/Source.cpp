@@ -12,7 +12,7 @@ double h(const HitoriSolverCore::State&, int**) { return 0; }
 
 int main() {
   HitoriSolverCore::HitoriSolver solver =
-      HitoriSolverCore::HitoriSolver("12x12.txt");
+      HitoriSolverCore::HitoriSolver("15x15.txt");
 
   solver.PreProccess();
 
