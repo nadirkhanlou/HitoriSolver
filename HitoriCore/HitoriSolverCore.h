@@ -64,22 +64,32 @@ class HitoriSolver {
 
   State InitialState();
   bool IsGoal(State&);
-  std::vector<State> Successor(State&, SearchType, double (*)(State, int**));
+  std::vector<State> Successor(State&, SearchType,
+                               double (*)(const State&, int**));
+  std::vector<State> Successor2(State&, SearchType,
+                                double (*)(const State&, int**));
 
   bool IsFeasible(bool*, const State&);
+  bool IsFeasible(const State&);
+  bool IsFeasibleAdj(const State&, int, int);
+  bool IsFeasibleSurround(const State&, int, int);
   void NShadeGenerator(int, std::vector<State>&, const State&);
   void Shade(bool*, int, std::vector<State>&, const State&, int);
   void PreProccess();
-  void PrintState(State);
+  void PrintState(const State&);
 
-  State GreedyBfs(State, double (*)(State, int**));
-  State AStar(State, double (*)(State, int**));
-  State SteepestAscentHillClimbing(State, double (*)(State, int**));
-  State StochasticHillClimbing(State, double (*)(State, int**));
-  State KStartSteepestAscentHillClimbing(State, double (*)(State, int**));
-  State KStartStochasticHillClimbing(State, double (*)(State, int**));
+  static void PrintState(const State&, int**);
+  static double HeuristicFunction1(const State&, int**);
+
+  State GreedyBfs(State, double (*)(const State&, int**));
+  State AStar(State, double (*)(const State&, int**));
+  State SteepestAscentHillClimbing(State, double (*)(const State&, int**));
+  State StochasticHillClimbing(State, double (*)(const State&, int**));
+  State KStartSteepestAscentHillClimbing(State,
+                                         double (*)(const State&, int**));
+  State KStartStochasticHillClimbing(State, double (*)(const State&, int**));
   State SimulatedAnnealing(
-      State, double (*)(State, int**),
+      State, double (*)(const State&, int**),
       std::vector<double>* (*)(int));  // @TODO: Get scheduler as a parameter
  private:
   int _dimension;
