@@ -64,9 +64,11 @@ class HitoriSolver {
 
   State InitialState();
   bool IsGoal(State&);
-  std::vector<State> Successor(State&, SearchType,
+  std::vector<State> PermutationSuccessor(State&, SearchType,
                                double (*)(const State&, int**));
-  std::vector<State> Successor2(State&, SearchType,
+  std::vector<State> NextConfilctSuccessor(State&, SearchType,
+                                          double (*)(const State&, int**));
+  std::vector<State> Successor(State&, SearchType,
                                 double (*)(const State&, int**));
 
   bool IsFeasible(bool*, const State&);
