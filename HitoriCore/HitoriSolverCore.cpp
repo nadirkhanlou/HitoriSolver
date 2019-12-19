@@ -148,6 +148,10 @@ State HitoriSolver::InitialState() { return State(_dimension); }
 bool HitoriSolver::IsGoal(State& s) {
   assert(this->_dimension == s._dimension);
 
+#ifdef PERMUTATION_SUCCESSOR
+  if (s._level < _dimension) return false;
+#endif
+
   std::set<int> set;
   int count;
 
@@ -185,10 +189,9 @@ bool HitoriSolver::IsGoal(State& s) {
   return true;
 }
 
-std::vector<State> HitoriSolver::Successor(State& currentState,
-                                           SearchType searchType,
-                                           double (*heuristic)(const State&,
-                                                               int**)) {
+std::vector<State> HitoriSolver::PermutationSuccessor(
+    State& currentState, SearchType searchType,
+    double (*heuristic)(const State&, int**)) {
   std::vector<State> successors;
 
   if (currentState._level >= _dimension) return successors;
@@ -224,10 +227,10 @@ std::vector<State> HitoriSolver::Successor(State& currentState,
   return successors;
 }
 
-std::vector<State> HitoriSolver::Successor2(State& currentState,
-                                            SearchType searchType,
-                                            double (*heuristic)(const State&,
-                                                                int**)) {
+std::vector<State> HitoriSolver::NextConfilctSuccessor(
+    State& currentState, SearchType searchType,
+    double (*heuristic)(const State&, int**)) {
+
   std::vector<State> successors;
 
   for (int I = currentState._level; I < _dimension * _dimension; I++) {
@@ -253,11 +256,15 @@ std::vector<State> HitoriSolver::Successor2(State& currentState,
         State onlyOneShaded = currentState;
         onlyOneShaded._level = I;
         onlyOneShaded._blackedOut[i][j] = true;
-        onlyOneShaded.costSoFar++;
+        onlyOneShaded.costSoFar += 1;
 
         if (IsFeasible(onlyOneShaded)) {
           successors.push_back(onlyOneShaded);
         }
+        /* else {
+          PrintState(onlyOneShaded);
+          std::cout << "\n";
+        }*/
 
         State shadedConfilcts = currentState;
         shadedConfilcts._level = I;
@@ -265,7 +272,7 @@ std::vector<State> HitoriSolver::Successor2(State& currentState,
         for (auto it = confilcts.begin(); it != confilcts.end(); ++it) {
           // shadedConfilcts._level++;
           shadedConfilcts._blackedOut[(*it).first][(*it).second] = true;
-          shadedConfilcts.costSoFar++;
+          shadedConfilcts.costSoFar += 1;
         }
 
         if (IsFeasible(shadedConfilcts)) {
@@ -294,6 +301,19 @@ std::vector<State> HitoriSolver::Successor2(State& currentState,
 
   return successors;
 }
+
+std::vector<State> HitoriSolver::Successor(State& currentState,
+                                           SearchType searchType,
+                                           double (*heuristic)(const State&,
+                                                               int**)) {
+#ifdef PERMUTATION_SUCCESSOR
+  return PermutationSuccessor(currentState, searchType, heuristic);
+#endif  // PERMUTATION_SUCCESSOR
+#ifndef PERMUTATION_SUCCESSOR
+  return NextConfilctSuccessor(currentState, searchType, heuristic);
+#endif  // !PERMUTATION_SUCCESSOR
+}
+
 
 bool HitoriSolver::IsFeasible(const State& currentState) {
   div_t resultD = div(currentState._level, _dimension);
@@ -693,7 +713,9 @@ double HitoriSolver::HeuristicFunction2(const State& currentState,
         ++count;
       }
     }
+    delete[] conflicts[i];
   }
+  delete[] conflicts;
   // Now columns or rows with duplicate numbers
   return count;
 }
@@ -743,7 +765,7 @@ State HitoriSolver::GreedyBfs(State initialState,
     // currentState was not the goal. So we expand it in our search tree.
     /*if (currentState._level < _dimension) {*/
     std::vector<State> successors =
-        Successor2(currentState, SearchType::GreedyBfs, heuristic);
+        Successor(currentState, SearchType::GreedyBfs, heuristic);
     for (auto it = successors.begin(); it != successors.end(); ++it) {
       // @TODO: Add a visited states buffer
       if (/* If *it was already visited */ true) {
@@ -778,27 +800,25 @@ State HitoriSolver::AStar(State initialState,
     priorityQueue.pop();
 
     counter++;
+    // If currentState is the goal, return it
+    if (IsGoal(currentState)) {
+      std::cout << "counter = " << counter << '\n';
+      return currentState;
+    }
 
-    if (currentState._level < _dimension) {
-      // current_state was not the goal. So we expand it in our search tree.
-      std::vector<State> successors =
-          Successor(currentState, SearchType::AStar, heuristic);
-      for (auto it = successors.begin(); it != successors.end(); ++it) {
-        // @TODO: Add a visited states buffer
-        if (/* If *it was already visited */ true) {
-          priorityQueue.push(*it);
-          // @TODO: Add *it to the visited buffer
-        }
-      }
-      successors.clear();
-    } else {
-      // If currentState is the goal, return it
-      if (IsGoal(currentState)) {
-        std::cout << "counter = " << counter << '\n';
-        return currentState;
+    // current_state was not the goal. So we expand it in our search tree.
+    std::vector<State> successors =
+        Successor(currentState, SearchType::AStar, heuristic);
+    for (auto it = successors.begin(); it != successors.end(); ++it) {
+      // @TODO: Add a visited states buffer
+      if (/* If *it was already visited */ true) {
+        priorityQueue.push(*it);
+        // @TODO: Add *it to the visited buffer
       }
     }
+    successors.clear();
   }
+
   // The goal could not be found.
   return State();
 }
@@ -854,7 +874,7 @@ State HitoriSolver::StochasticHillClimbing(State initialState,
 
     // Generate the successors of the current state
     std::vector<State> successors =
-        Successor2(currentState, SearchType::HillClimbing, heuristic);
+        Successor(currentState, SearchType::HillClimbing, heuristic);
 
     // Now each state will be assigned a probability according to its score
     // (heuristic). The higher the score is, the lower the probability will be.
