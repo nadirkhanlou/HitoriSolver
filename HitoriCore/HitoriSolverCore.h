@@ -12,6 +12,8 @@
 
 #define DIGITS(num) (num > 0 ? (int)std::log10((double)num) + 1 : 1)
 
+#define RANDOM static_cast<double>(std::rand()) / static_cast<double>(RAND_MAX)
+
 namespace HitoriSolverCore {
 enum class SearchType { GreedyBfs, AStar, HillClimbing, SimulatedAnnealing };
 
@@ -83,6 +85,7 @@ class HitoriSolver {
   static void PrintState(const State&, int**);
   static double HeuristicFunction1(const State&, int**);
   static double HeuristicFunction2(const State&, int**);
+  static double HeuristicFunction3(const State&, int**);
 
   State GreedyBfs(State, double (*)(const State&, int**));
   State AStar(State, double (*)(const State&, int**));
