@@ -177,15 +177,18 @@ bool HitoriSolver::IsGoal(State& s) {
 std::vector<State> HitoriSolver::PermutationSuccessor(
     State& currentState, SearchType searchType,
     double (*heuristic)(const State&, int**)) {
+
+    //This successor creates all permutations of shading blocks in a row which are feasible
+
   std::vector<State> successors;
+  if (currentState._level >= _dimension) return successors; // if the row is the last one it doesnt have any successor
 
-  if (currentState._level >= _dimension) return successors;
 
+  // clean row is a row which there is no need to shade any blocks in it
   bool* cleanRow = new bool[_dimension];
   for (int i = 0; i < _dimension; i++) {
     cleanRow[i] = false;
   }
-
   if (IsFeasible(cleanRow, currentState)) {
     State cleanRowState = currentState;
     delete[] cleanRowState._blackedOut[currentState._level];
@@ -194,10 +197,25 @@ std::vector<State> HitoriSolver::PermutationSuccessor(
     successors.push_back(cleanRowState);
   }
 
-  for (int i = std::max(_rowConflicts[currentState._level], 1); i <= std::min((_dimension + 1) / 2, _rowMaxShade[currentState._level]); i++) {
+  //NShadeGenerator generates permutations of all numbers in a row taken N at a time
+  
+  //Here in this loop NShadeGenerator is called with parameter N = i
+  
+  //If PreProcess method is called at start a min and a max bound can be found for i
+  //otherwise it will start from 1 to half the size of the row
+  for (int i =
+           std::max(_rowConflicts ? _rowConflicts[currentState._level] : 1, 1);
+       i <=
+       std::min((_dimension + 1) / 2,
+                _rowMaxShade ? _rowMaxShade[currentState._level] : _dimension);
+       i++) {
     NShadeGenerator(i, successors, currentState);
   }
 
+  //Depends on search type the score will have different value
+  //In GreedyBFS and HillClimbing it is equal to heuristic of each state but in other algorithms
+  //it is needed to consider g(n) -which here is called costSoFar- as well
+  
   if (searchType == SearchType::GreedyBfs ||
       searchType == SearchType::HillClimbing) {
     for (auto it = successors.begin(); it != successors.end(); ++it) {
@@ -217,12 +235,25 @@ std::vector<State> HitoriSolver::NextConfilctSuccessor(
     double (*heuristic)(const State&, int**)) {
   std::vector<State> successors;
 
+  //This successor has 2 options as successor in each candidate block, if none of them be
+  //feasible it will iterate to next candidate block
+
+  //Candidate blocks are blocks which have one or more conflict with a block in same row or column
+  
+  //As it is mentioned earlier there are 2 options, one is shading the candidate block and other
+  //option is shade all other blocks which have conflict with the candidate block
+  
+  //In this successor _level stores the last block checked in predecessor nodes 
+
   for (int I = currentState._level; I < _dimension * _dimension; I++) {
     div_t resultD = div(I, _dimension);
     int i = resultD.quot;
     int j = resultD.rem;
+
+    //if the block is shaded in predecessors or it is not candidate to shade 
     if (currentState._blackedOut[i][j] || _whitedOut[i][j]) continue;
 
+    //find conflicts
     std::vector<std::pair<int, int>> confilcts;
     for (int k = 0; k < _dimension; ++k) {
       if (k != j && !currentState._blackedOut[i][k] &&
@@ -241,6 +272,7 @@ std::vector<State> HitoriSolver::NextConfilctSuccessor(
       onlyOneShaded._blackedOut[i][j] = true;
       onlyOneShaded.costSoFar += 1;
 
+      //check if candidate block is feasible to shade
       if (IsFeasible(onlyOneShaded)) {
         successors.push_back(onlyOneShaded);
       }
@@ -253,6 +285,7 @@ std::vector<State> HitoriSolver::NextConfilctSuccessor(
         shadedConfilcts.costSoFar += 1;
       }
 
+      //check if shading all other blocks in conflict with the candidate block is feasible
       if (IsFeasible(shadedConfilcts)) {
         shadedConfilcts._level++;
         successors.push_back(shadedConfilcts);
@@ -262,6 +295,9 @@ std::vector<State> HitoriSolver::NextConfilctSuccessor(
     }
   }
 
+  // Depends on search type the score will have different value
+  // In GreedyBFS and HillClimbing it is equal to heuristic of each state but in other algorithms
+  //it is needed to consider g(n) -which here is called costSoFar- as well
   if (searchType == SearchType::GreedyBfs ||
       searchType == SearchType::HillClimbing) {
     for (auto it = successors.begin(); it != successors.end(); ++it) {
@@ -280,6 +316,8 @@ std::vector<State> HitoriSolver::Successor(State& currentState,
                                            SearchType searchType,
                                            double (*heuristic)(const State&,
                                                                int**)) {
+//Depending on PERMUTATION_SUCCESSOR definition the successor will decide which successor
+//method should be called
 #ifdef PERMUTATION_SUCCESSOR
   return PermutationSuccessor(currentState, searchType, heuristic);
 #endif  // PERMUTATION_SUCCESSOR
@@ -289,16 +327,24 @@ std::vector<State> HitoriSolver::Successor(State& currentState,
 }
 
 bool HitoriSolver::IsFeasible(const State& currentState) {
+
+  //This feasiblity checker is used in NextConflictSuccessor
+
   div_t resultD = div(currentState._level, _dimension);
   int x = resultD.quot;
   int y = resultD.rem;
 
+  //check feasibility of shading candidate block 
   if (currentState._blackedOut[x][y]) {
     if (!IsFeasibleAdj(currentState, x, y) ||
         !IsFeasibleSurround(currentState, x, y))
       return false;
+    else
+      return true;
   }
 
+  //Check feasibility when it is desired to shade all other blocks in conficts with
+  //candidate block but itself 
   for (int i = 0; i < _dimension; ++i) {
     if (currentState._blackedOut[i][y]) {
       if (!IsFeasibleAdj(currentState, i, y) ||
@@ -306,7 +352,6 @@ bool HitoriSolver::IsFeasible(const State& currentState) {
         return false;
     }
   }
-
   for (int i = 0; i < _dimension; ++i) {
     if (currentState._blackedOut[x][i]) {
       if (!IsFeasibleAdj(currentState, x, i) ||
@@ -319,6 +364,9 @@ bool HitoriSolver::IsFeasible(const State& currentState) {
 }
 
 bool HitoriSolver::IsFeasibleAdj(const State& currentState, int x, int y) {
+
+  //It will retrun false if shading the block cause shaded blocks become adjacent
+
   if ((x < _dimension - 1 && currentState._blackedOut[x + 1][y]) ||
       (x > 0 && currentState._blackedOut[x - 1][y]) ||
       (y < _dimension - 1 && currentState._blackedOut[x][y + 1]) ||
@@ -330,6 +378,9 @@ bool HitoriSolver::IsFeasibleAdj(const State& currentState, int x, int y) {
 }
 
 bool HitoriSolver::IsFeasibleSurround(const State& currentState, int x, int y) {
+
+  //It will return false if shading the block cause a white block be surrounded by shaded blocks
+
   if (((x >= _dimension - 2 || currentState._blackedOut[x + 2][y]) &&
        (x < _dimension - 1 &&
         (y > _dimension - 1 || currentState._blackedOut[x + 1][y + 1])) &&
@@ -354,6 +405,9 @@ bool HitoriSolver::IsFeasibleSurround(const State& currentState, int x, int y) {
 }
 
 bool HitoriSolver::IsFeasible(bool* shaded, const State& currentState) {
+
+  //It will check feasiblity of shading blocks based on permutations in a row
+
   for (int i = 1; i < _dimension - 1; i++) {
     if ((shaded[i] && shaded[i - 1]) || (shaded[i] && shaded[i + 1]))
       return false;
@@ -397,6 +451,7 @@ bool HitoriSolver::IsFeasible(bool* shaded, const State& currentState) {
       return false;
   }
 
+  //Consider if conflicts are solved, if not the state is not feasible 
   for (int i = 0; i < _dimension; i++) {
     if (!shaded[i]) {
       for (int j = i + 1; j < _dimension; j++) {
@@ -417,10 +472,15 @@ bool HitoriSolver::IsFeasible(bool* shaded, const State& currentState) {
 
 void HitoriSolver::NShadeGenerator(int n, std::vector<State>& succcessorStates,
                                    const State& currentState) {
-  bool* tempShadedFlags = new bool[_dimension];
+  //NShadeGenerator generates permutations of all blocks in a row taken N at a time recursively
+  
+    bool* tempShadedFlags = new bool[_dimension];
   for (int i = 0; i < _dimension; i++) {
     tempShadedFlags[i] = false;
   }
+
+  //It is not needed to generate permutations after _dimension - n + 1 because it is transparent
+  //can not generate enough to get N
   for (int i = 0; i < _dimension - n + 1; i++) {
     Shade(tempShadedFlags, i, succcessorStates, currentState, n - 1);
   }
@@ -435,6 +495,7 @@ void HitoriSolver::Shade(bool* shaded, int selectIndex,
       !IsFeasibleAdj(currentState, currentState._level, selectIndex))
     return;
 
+  //Select block to shade temporary in scope of this heap, It will undo it before exit the scope
   shaded[selectIndex] = true;
 
   if (recursiveLevel < 1) {
@@ -459,6 +520,11 @@ void HitoriSolver::Shade(bool* shaded, int selectIndex,
     shaded[selectIndex] = false;
     return;
   }
+
+  //If a block is shaded next one can not be shaded so it is enough to start from
+  //selectIndext + 2
+  //Also it is enough to generate until _dimension - recursiveLevel + 1 as the same reason as
+  //explained in NShadeGenerator method
   for (int i = selectIndex + 2; i < _dimension - recursiveLevel + 1; i++) {
     if (!shaded[i])
       Shade(shaded, i, succcessorStates, currentState, recursiveLevel - 1);
@@ -467,6 +533,9 @@ void HitoriSolver::Shade(bool* shaded, int selectIndex,
 }
 
 void HitoriSolver::PreProcess() {
+
+  //Before running algorithm some blocks can determined as whitedOut, It means there is no need
+  //to shaded them to get to the solution
   for (int i = 0; i < _dimension; i++) {
     _whitedOut[i] = new bool[_dimension];
     for (int j = 0; j < _dimension; j++) {
@@ -487,6 +556,7 @@ void HitoriSolver::PreProcess() {
     }
   }
 
+  //_rowConfilcts and _rowMaxShade give a bound to generate permutations in PermutationSuccessor
   _rowConflicts = new int[_dimension];
   _rowMaxShade = new int[_dimension];
   for (int L = 0; L < _dimension; L++) {
@@ -551,6 +621,10 @@ void HitoriSolver::PrintState(const State& state, int** gameBoard) {
 double HitoriSolver::HeuristicFunction1(const State& currentState,
                                         int** gameBoard) {
   double h = 0;
+
+  //This heuristic function is compatible with the PermutationSuccessor
+  //It will find the blocks in next levels in conflicts with the blocks in the row remained
+  //after blocks choosen by the successor in the row are shaded
 
   if (currentState._level < 1) {
     for (int i = 0; i < currentState._dimension; i++) {
