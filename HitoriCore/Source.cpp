@@ -1,70 +1,74 @@
 #include <iostream>
+#include <chrono>
 #include "HitoriSolverCore.h"
 
-//#define BFS
+#define BFS
 //#define GREEDY_BFS
-#define A_STAR
+//#define A_STAR
 //#define HILL_CLIMBING
 //#define S_HILL_CLIMBING
 //#define SIMULATED_ANNEALING
 
-double h(const HitoriSolverCore::State&, int**) { return 0; }
-
-std::vector<double>* SCurveSchedule(int steps) {
-  double t;
-  double increment;
-  t = 0.01;
-  increment = (1 - t) / double(steps);
-  std::vector<double>* temperatures = new std::vector<double>;
-  while (t <= 1) {
-    double temp = (1) / (1 + pow((t / (1 - t)), (3.0)));
-    temperatures->push_back(temp);
-    t += increment;
-  }
-  return temperatures;
-}
-
 int main() {
-  HitoriSolverCore::HitoriSolver solver =
-      HitoriSolverCore::HitoriSolver("21x21_2.txt");
-
-  solver.PreProcess();
+  HitoriSolverCore::HitoriSolver* solver;
+  const char* path = "5x5.txt";
+  auto heuristic = HitoriSolverCore::HitoriSolver::HeuristicFunction1;
 
 #ifdef BFS
-  HitoriSolverCore::State result = solver.GreedyBfs(solver.InitialState(), h);
+  solver = new HitoriSolverCore::HitoriSolver(path);
+  solver->PreProcess();
+  HitoriSolverCore::State result = solver->GreedyBfs(
+      solver->InitialState(),
+      [](const HitoriSolverCore::State&, int**) { return double(0); });
+  solver->PrintState(result);
+  delete solver;
 #endif
 
 #ifdef GREEDY_BFS
+  solver = new HitoriSolverCore::HitoriSolver(path);
+  solver->PreProcess();
   HitoriSolverCore::State result =
-      solver.GreedyBfs(solver.InitialState(),
-                       HitoriSolverCore::HitoriSolver::HeuristicFunction1);
+      solver->GreedyBfs(solver->InitialState(), heuristic);
+  solver->PrintState(result);
+  delete solver;
 #endif
 
 #ifdef A_STAR
+  solver = new HitoriSolverCore::HitoriSolver(path);
+  solver->PreProcess();
   HitoriSolverCore::State result =
-      solver.AStar(solver.InitialState(),
-                   HitoriSolverCore::HitoriSolver::HeuristicFunction1);
+      solver->AStar(solver->InitialState(), heuristic);
+  solver->PrintState(result);
+  delete solver;
 #endif
 
 #ifdef HILL_CLIMBING
-  HitoriSolverCore::State result = solver.SteepestAscentHillClimbing(
-      solver.InitialState(),
-      HitoriSolverCore::HitoriSolver::HeuristicFunction1);
+  solver = new HitoriSolverCore::HitoriSolver(path);
+  solver->PreProcess();
+  HitoriSolverCore::State result = solver->SteepestAscentHillClimbing(
+      solver->InitialState(), heuristic);
+  solver->PrintState(result);
+  delete solver;
 #endif
 
 #ifdef S_HILL_CLIMBING
-  HitoriSolverCore::State result = solver.StochasticHillClimbing(
-      solver.InitialState(),
-      HitoriSolverCore::HitoriSolver::HeuristicFunction1);
+  solver = new HitoriSolverCore::HitoriSolver(path);
+  solver->PreProcess();
+  HitoriSolverCore::State result = solver->StochasticHillClimbing(
+      solver->InitialState(), heuristic);
+  solver->PrintState(result);
+  delete solver;
 #endif
 
 #ifdef SIMULATED_ANNEALING
-  HitoriSolverCore::State result = solver.SimulatedAnnealing(
-      solver.InitialState(), HitoriSolverCore::HitoriSolver::HeuristicFunction2,
-      SCurveSchedule);
+  solver = new HitoriSolverCore::HitoriSolver(path);
+  solver->PreProcess();
+  HitoriSolverCore::State result = solver->SimulatedAnnealing(
+      solver->InitialState(), heuristic,
+      HitoriSolverCore::HitoriSolver::SCurveSchedule);
+  solver->PrintState(result);
+  delete solver;
 #endif
-
-  solver.PrintState(result);
 
   return 0;
 }

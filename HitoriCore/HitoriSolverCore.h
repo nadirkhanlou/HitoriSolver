@@ -85,18 +85,16 @@ class HitoriSolver {
   static void PrintState(const State&, int**);
   static double HeuristicFunction1(const State&, int**);
   static double HeuristicFunction2(const State&, int**);
-  static double HeuristicFunction3(const State&, int**);
+  static std::vector<double> SCurveSchedule(int);
 
   State GreedyBfs(State, double (*)(const State&, int**));
   State AStar(State, double (*)(const State&, int**));
   State SteepestAscentHillClimbing(State, double (*)(const State&, int**));
   State StochasticHillClimbing(State, double (*)(const State&, int**));
-  State KStartSteepestAscentHillClimbing(State,
-                                         double (*)(const State&, int**));
   State KStartStochasticHillClimbing(State, double (*)(const State&, int**));
   State SimulatedAnnealing(
       State, double (*)(const State&, int**),
-      std::vector<double>* (*)(int));  // @TODO: Get scheduler as a parameter
+      std::vector<double> (*)(int));
  private:
   int _dimension;
   int** _gameBoard;
