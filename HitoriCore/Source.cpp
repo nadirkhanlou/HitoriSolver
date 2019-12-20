@@ -1,9 +1,9 @@
 #include <iostream>
 #include "HitoriSolverCore.h"
 
-#define BFS
+//#define BFS
 //#define GREEDY_BFS
-//#define A_STAR
+#define A_STAR
 //#define HILL_CLIMBING
 //#define S_HILL_CLIMBING
 //#define SIMULATED_ANNEALING
@@ -26,7 +26,7 @@ std::vector<double>* SCurveSchedule(int steps) {
 
 int main() {
   HitoriSolverCore::HitoriSolver solver =
-      HitoriSolverCore::HitoriSolver("20x20.txt");
+      HitoriSolverCore::HitoriSolver("21x21_2.txt");
 
   solver.PreProcess();
 

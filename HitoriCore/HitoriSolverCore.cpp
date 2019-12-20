@@ -447,6 +447,10 @@ void HitoriSolver::Shade(bool* shaded, int selectIndex,
                          const State& currentState, int recursiveLevel) {
   if (currentState._blackedOut[currentState._level][selectIndex]) return;
 
+  if (!IsFeasibleSurround(currentState, currentState._level, selectIndex) ||
+      !IsFeasibleAdj(currentState, currentState._level, selectIndex))
+    return;
+
   shaded[selectIndex] = true;
 
   if (recursiveLevel < 1) {
