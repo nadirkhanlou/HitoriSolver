@@ -1,9 +1,9 @@
 #include <iostream>
 #include "HitoriSolverCore.h"
 
-//#define BFS
-// define GREEDY_BFS
-#define A_STAR
+#define BFS
+//#define GREEDY_BFS
+//#define A_STAR
 //#define HILL_CLIMBING
 //#define S_HILL_CLIMBING
 //#define SIMULATED_ANNEALING
@@ -28,7 +28,7 @@ int main() {
   HitoriSolverCore::HitoriSolver solver =
       HitoriSolverCore::HitoriSolver("20x20.txt");
 
-  solver.PreProccess();
+  solver.PreProcess();
 
 #ifdef BFS
   HitoriSolverCore::State result = solver.GreedyBfs(solver.InitialState(), h);
@@ -37,7 +37,7 @@ int main() {
 #ifdef GREEDY_BFS
   HitoriSolverCore::State result =
       solver.GreedyBfs(solver.InitialState(),
-                       HitoriSolverCore::HitoriSolver::HeuristicFunction2);
+                       HitoriSolverCore::HitoriSolver::HeuristicFunction1);
 #endif
 
 #ifdef A_STAR

@@ -237,7 +237,7 @@ std::vector<State> HitoriSolver::NextConfilctSuccessor(
     div_t resultD = div(I, _dimension);
     int i = resultD.quot;
     int j = resultD.rem;
-    if (currentState._blackedOut[i][j]) continue;
+    if (currentState._blackedOut[i][j] || _whitedOut[i][j]) continue;
 
     std::vector<std::pair<int, int>> confilcts;
     for (int k = 0; k < _dimension; ++k) {
@@ -335,61 +335,6 @@ bool HitoriSolver::IsFeasible(const State& currentState) {
 }
 
 bool HitoriSolver::IsFeasibleAdj(const State& currentState, int x, int y) {
-  /*if (x == 0) {
-    if (y == 0) {
-      if (currentState._blackedOut[0][1] || currentState._blackedOut[1][0]) {
-        return false;
-      }
-    } else if (y == _dimension - 1) {
-      if (currentState._blackedOut[0][_dimension - 2] ||
-          currentState._blackedOut[1][_dimension - 1]) {
-        return false;
-      }
-    } else {
-      if (currentState._blackedOut[0][y + 1] ||
-          currentState._blackedOut[0][y - 1] ||
-          currentState._blackedOut[1][y]) {
-        return false;
-      }
-    }
-  } else if (x == _dimension - 1) {
-    if (y == 0) {
-      if (currentState._blackedOut[_dimension - 1][1] ||
-          currentState._blackedOut[_dimension - 2][0]) {
-        return false;
-      }
-    } else if (y == _dimension - 1) {
-      if (currentState._blackedOut[_dimension - 1][_dimension - 2] ||
-          currentState._blackedOut[_dimension - 2][_dimension - 1]) {
-        return false;
-      }
-    } else {
-      if (currentState._blackedOut[_dimension - 1][y + 1] ||
-          currentState._blackedOut[_dimension - 1][y - 1] ||
-          currentState._blackedOut[_dimension - 2][y]) {
-        return false;
-      }
-    }
-  } else {
-    if (y == 0) {
-      if (currentState._blackedOut[x - 1][0] ||
-          currentState._blackedOut[x + 1][0] || currentState._blackedOut[x][1])
-        return false;
-    } else if (y == _dimension - 1) {
-      if (currentState._blackedOut[x - 1][_dimension - 1] ||
-          currentState._blackedOut[x + 1][_dimension - 1] ||
-          currentState._blackedOut[x][_dimension - 2])
-        return false;
-    } else {
-      if (currentState._blackedOut[x + 1][y] ||
-          currentState._blackedOut[x - 1][y] ||
-          currentState._blackedOut[x][y + 1] ||
-          currentState._blackedOut[x][y - 1]) {
-        return false;
-      }
-    }
-  }*/
-
   if ((x < _dimension - 1 && currentState._blackedOut[x + 1][y]) ||
       (x > 0 && currentState._blackedOut[x - 1][y]) ||
       (y < _dimension - 1 && currentState._blackedOut[x][y + 1]) ||
@@ -401,71 +346,6 @@ bool HitoriSolver::IsFeasibleAdj(const State& currentState, int x, int y) {
 }
 
 bool HitoriSolver::IsFeasibleSurround(const State& currentState, int x, int y) {
-  /*if (x == 0) {
-    if (y == 0) {
-      if ((currentState._blackedOut[0][2] && currentState._blackedOut[1][1]) ||
-          (currentState._blackedOut[2][0] && currentState._blackedOut[1][1]))
-        return false;
-    } else if (y == _dimension - 1) {
-      if (currentState._blackedOut[0][_dimension - 3] &&
-              currentState._blackedOut[1][_dimension - 2] ||
-          (currentState._blackedOut[2][0] &&
-              currentState._blackedOut[1][_dimension - 2]))
-        return false;
-    }
-    else if (y == 1) {
-      if (currentState._blackedOut[1][0]) return false;
-    } else if (y == _dimension - 2) {
-      if (currentState._blackedOut[1][_dimension - 1]) return false;
-    }
-  } else if (x == 1) {
-    if (y == 0) {
-      if (currentState._blackedOut[0][1]) return false;
-    } else if (y = _dimension - 1) {
-      if (currentState._blackedOut[0][_dimension - 2]) return false;
-    } else {
-      if (currentState._blackedOut[0][y + 1] &&
-          currentState._blackedOut[0][y - 1])
-        return false;
-    }
-  } else if (x == _dimension - 2) {
-    if (y == 0) {
-      if (currentState._blackedOut[_dimension - 1][1]) return false;
-    } else if (y = _dimension - 1) {
-      if (currentState._blackedOut[_dimension - 1][_dimension - 2])
-        return false;
-    } else {
-      if (currentState._blackedOut[_dimension - 1][y + 1] &&
-          currentState._blackedOut[_dimension - 1][y - 1])
-        return false;
-    }
-  } else if (x == _dimension - 1) {
-    if (y == 1) {
-      if (currentState._blackedOut[_dimension - 2][0]) return false;
-    } else if (y == _dimension - 2) {
-      if (currentState._blackedOut[_dimension - 2][_dimension - 1])
-        return false;
-    }
-  }
-
-  if ((x < _dimension - 2 && y > 0 && y < _dimension - 1 &&
-       currentState._blackedOut[x + 2][y] &&
-       currentState._blackedOut[x + 1][y + 1] &&
-       currentState._blackedOut[x + 1][y - 1]) ||
-      (x > 1 && y > 0 && y < _dimension - 1 &&
-       currentState._blackedOut[x - 2][y] &&
-       currentState._blackedOut[x - 1][y + 1] &&
-       currentState._blackedOut[x - 1][y - 1]) ||
-      (y < _dimension - 2 && x > 0 && x < _dimension - 1 &&
-       currentState._blackedOut[x][y + 2] &&
-       currentState._blackedOut[x + 1][y + 1] &&
-       currentState._blackedOut[x - 1][y + 1]) ||
-      (y > 1 && x > 0 && x < _dimension - 1 &&
-       currentState._blackedOut[x][y - 2] &&
-       currentState._blackedOut[x + 1][y - 1] &&
-       currentState._blackedOut[x - 1][y - 1]))
-    return false;*/
-
   if (((x >= _dimension - 2 || currentState._blackedOut[x + 2][y]) &&
        (x < _dimension - 1 &&
         (y > _dimension - 1 || currentState._blackedOut[x + 1][y + 1])) &&
@@ -581,7 +461,8 @@ void HitoriSolver::Shade(bool* shaded, int selectIndex,
                 _gameBoard[currentState._level][i] == _gameBoard[j][i])
               isConflictDecreased = true;
           }
-          if (!isConflictDecreased) newState.costSoFar += 1;
+          if (!isConflictDecreased)
+            newState.costSoFar += 1; 
         }
       }
       newState._level++;
@@ -597,7 +478,7 @@ void HitoriSolver::Shade(bool* shaded, int selectIndex,
   shaded[selectIndex] = false;
 }
 
-void HitoriSolver::PreProccess() {
+void HitoriSolver::PreProcess() {
   for (int i = 0; i < _dimension; i++) {
     _whitedOut[i] = new bool[_dimension];
     for (int j = 0; j < _dimension; j++) {

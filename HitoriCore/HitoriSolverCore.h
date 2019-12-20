@@ -79,7 +79,7 @@ class HitoriSolver {
   bool IsFeasibleSurround(const State&, int, int);
   void NShadeGenerator(int, std::vector<State>&, const State&);
   void Shade(bool*, int, std::vector<State>&, const State&, int);
-  void PreProccess();
+  void PreProcess();
   void PrintState(const State&);
 
   static void PrintState(const State&, int**);
