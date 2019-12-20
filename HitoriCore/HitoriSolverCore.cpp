@@ -3,7 +3,7 @@
 #include <fstream>
 #include <iostream>
 
-#define PERMUTATION_SUCCESSOR
+//#define PERMUTATION_SUCCESSOR
 
 namespace HitoriSolverCore {
 // Softmax filter that turns a vector of real valued, positive numbers (which
@@ -812,6 +812,7 @@ State HitoriSolver::SteepestAscentHillClimbing(State initialState,
 
   // Return the current state (which is a local minimum and COULD be a
   // global minimum)
+  std::cout << "Nodes checked: " << counter << "\n";
   return currentState;
 }
 
@@ -826,7 +827,7 @@ State HitoriSolver::StochasticHillClimbing(State initialState,
     ++counter;
     // Check whether the current state is a goal
     if (IsGoal(currentState)) {
-      std::cout << "Goal\n";
+      std::cout << "Nodes checked: " << counter << "\n";
       return currentState;
     }
 
@@ -872,6 +873,7 @@ State HitoriSolver::StochasticHillClimbing(State initialState,
   }
   // Return the current state (which is a local minimum and COULD be a
   // global minimum)
+  std::cout << "Nodes checked: " << counter << "\n";
   return currentState;
 }
 
@@ -914,7 +916,9 @@ State HitoriSolver::SimulatedAnnealing(State initialState,
   State currentState = initialState;
   currentState.score = heuristic(currentState, _gameBoard);
   // Start the simulation (1000 iterations)
+  int counter = 0;
   for (auto T = schedule.begin(); T != schedule.end(); ++T) {
+    ++counter;
     std::vector<State> successors =
         Successor(currentState, SearchType::SimulatedAnnealing, heuristic);
 	// Check if there are any neighbours for the current state
@@ -937,6 +941,7 @@ State HitoriSolver::SimulatedAnnealing(State initialState,
   }
   schedule.clear();
 
+  std::cout << "Nodes checked: " << counter << "\n";
   return currentState;
 }
 }  // namespace HitoriSolverCore
