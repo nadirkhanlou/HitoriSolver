@@ -65,8 +65,10 @@ State::State(State&& other) noexcept
 State::~State() {
   for (int i = 0; i < _dimension; ++i) {
     delete[] _blackedOut[i];
+    _blackedOut[i] = nullptr;
   }
   delete[] _blackedOut;
+  _blackedOut = nullptr;
 }
 
 State& State::operator=(const State& other) {
@@ -74,10 +76,16 @@ State& State::operator=(const State& other) {
     this->score = other.score;
     this->costSoFar = other.costSoFar;
     this->_level = other._level;
-    for (int i = 0; i < _dimension; ++i) {
-      delete[] this->_blackedOut[i];
+    if (_blackedOut) {
+      for (int i = 0; i < _dimension; ++i) {
+        if (_blackedOut[i]) {
+          delete[] this->_blackedOut[i];
+          this->_blackedOut[i] = nullptr;
+        }
+      }
+      delete[] this->_blackedOut;
     }
-    delete[] this->_blackedOut;
+    this->_blackedOut = nullptr;
     this->_dimension = other._dimension;
     this->_blackedOut = new bool*[_dimension];
     for (int i = 0; i < _dimension; ++i) {
@@ -90,19 +98,23 @@ State& State::operator=(const State& other) {
 }
 
 State& State::operator=(State&& other) noexcept {
-  if (&other != this) {
-    this->score = other.score;
-    this->costSoFar = other.costSoFar;
-    this->_level = other._level;
+  this->score = other.score;
+  this->costSoFar = other.costSoFar;
+  this->_level = other._level;
+  if (this->_blackedOut) {
     for (int i = 0; i < _dimension; ++i) {
-      delete[] this->_blackedOut[i];
+      if (this->_blackedOut[i]) {
+        delete[] this->_blackedOut[i];
+        _blackedOut[i] = nullptr;
+      }
     }
     delete[] this->_blackedOut;
-    this->_dimension = other._dimension;
-    this->_blackedOut = other._blackedOut;
-    other._blackedOut = nullptr;
-    other._dimension = 0;
+    _blackedOut = nullptr;
   }
+  this->_dimension = other._dimension;
+  this->_blackedOut = other._blackedOut;
+  other._blackedOut = nullptr;
+  other._dimension = 0;
   return *this;
 }
 
@@ -192,6 +204,7 @@ std::vector<State> HitoriSolver::PermutationSuccessor(
   if (IsFeasible(cleanRow, currentState)) {
     State cleanRowState = currentState;
     delete[] cleanRowState._blackedOut[currentState._level];
+    cleanRowState._blackedOut = nullptr;
     cleanRowState._blackedOut[currentState._level] = cleanRow;
     cleanRowState._level++;
     successors.push_back(cleanRowState);
@@ -495,7 +508,7 @@ void HitoriSolver::Shade(bool* shaded, int selectIndex,
       !IsFeasibleAdj(currentState, currentState._level, selectIndex))
     return;
 
-  //Select block to shade temporary in scope of this heap, It will undo it before exit the scope
+  //Select block to shade temporary in scope of this stack, It will undo it before exit the scope
   shaded[selectIndex] = true;
 
   if (recursiveLevel < 1) {
@@ -594,6 +607,7 @@ void HitoriSolver::PreProcess() {
       }
     }
     delete[] conflictsCounter;
+    conflictsCounter = nullptr;
   }
   
 }
@@ -784,12 +798,7 @@ State HitoriSolver::SteepestAscentHillClimbing(State initialState,
   int counter = 0;
   while (true) {
     ++counter;
-    // Check whether the current state is a goal
-    if (IsGoal(currentState)) {
-      std::cout << "Nodes checked: " << counter << "\n";
-      return currentState;
-    }
-
+    
     // Generate the successors of the current state
     std::vector<State> successors =
         Successor(currentState, SearchType::HillClimbing, heuristic);
@@ -825,11 +834,6 @@ State HitoriSolver::StochasticHillClimbing(State initialState,
   int counter = 0;
   while (true) {
     ++counter;
-    // Check whether the current state is a goal
-    if (IsGoal(currentState)) {
-      std::cout << "Nodes checked: " << counter << "\n";
-      return currentState;
-    }
 
     // Generate the successors of the current state
     std::vector<State> successors =
@@ -879,22 +883,28 @@ State HitoriSolver::StochasticHillClimbing(State initialState,
 
 State HitoriSolver::KStartStochasticHillClimbing(
     State initialState, double (*heuristic)(const State&, int**)) {
+
+  omp_set_dynamic(0);
+   
   // Use the maximum number of threads available
   omp_set_num_threads(omp_get_max_threads());
 
   // Create a vector the size of the number of threads available
   int numOfThreads = omp_get_num_threads();
   std::vector<State> results(numOfThreads);
+  results.resize(omp_get_num_threads());
+
 
 #pragma omp parallel
   {
     // Get the thread number
     int threadNum = omp_get_thread_num();
-    results[threadNum] = StochasticHillClimbing(initialState, heuristic);
-
+    State res = StochasticHillClimbing(InitialState(), heuristic);
+#pragma omp critical
+    results[threadNum] = res;
+  }
 #pragma omp barrier
     {}
-  }
 
   // Check the results from each thread and return the first one that is a goal
   for (auto it = results.begin(); it != results.end(); ++it) {
@@ -904,7 +914,7 @@ State HitoriSolver::KStartStochasticHillClimbing(
   }
 
   // The goal could not be found.
-  return State();
+  return results[0];
 }
 State HitoriSolver::SimulatedAnnealing(State initialState,
                                        double (*heuristic)(const State&, int**),

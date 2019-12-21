@@ -5,13 +5,14 @@
 //#define BFS
 //#define GREEDY_BFS
 //#define A_STAR
-#define HILL_CLIMBING
-#define S_HILL_CLIMBING
-#define SIMULATED_ANNEALING
+//#define HILL_CLIMBING
+//#define S_HILL_CLIMBING
+//#define K_START_S_HILL_CLIMBING
+//#define SIMULATED_ANNEALING
 
 int main() {
   HitoriSolverCore::HitoriSolver* solver;
-  const char* path = "sample2.txt";
+  const char* path = "12x12.txt";
   auto heuristic = HitoriSolverCore::HitoriSolver::HeuristicFunction2;
   HitoriSolverCore::State result;
   std::chrono::high_resolution_clock::time_point t1, t2;
@@ -97,7 +98,29 @@ int main() {
   delete solver;
 #endif
 
-#ifdef S_HILL_CLIMBING
+#ifdef K_START_S_HILL_CLIMBING
+  std::cout << "========================================\n";
+  std::cout << "K Start Stochastic Hill Climbing\n";
+  t1 = std::chrono::high_resolution_clock::now();
+  solver = new HitoriSolverCore::HitoriSolver(path);
+  solver->PreProcess();
+  result = solver->KStartStochasticHillClimbing(solver->InitialState(), heuristic);
+  if (solver->IsGoal(result))
+    std::cout << "Goal\n";
+  else
+    std::cout << "Not Goal\n";
+  solver->PrintState(result);
+  t2 = std::chrono::high_resolution_clock::now();
+  durationPast =
+      (int)(std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1)
+                .count() *
+            1000);
+  std::cout << "Duration: " << durationPast << '\n';
+  std::cout << "========================================\n";
+  delete solver;
+#endif
+
+  #ifdef S_HILL_CLIMBING
   std::cout << "========================================\n";
   std::cout << "Stochastic Hill Climbing\n";
   t1 = std::chrono::high_resolution_clock::now();
