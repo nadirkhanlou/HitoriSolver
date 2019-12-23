@@ -33,9 +33,11 @@
 
 # Other
 .vs/
-/Debug
-/Release
-/x64
+Debug/
+Release/
+HitoriCore/Debug/
+HitoriCore/Release/
+x64/
 *.suo
 *.log
 *.db
