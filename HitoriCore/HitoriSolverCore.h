@@ -4,7 +4,10 @@
 #include <algorithm>
 #include <queue>
 #include <random>
+#include <iostream>
 #include <string>
+#include <sstream>
+#include <fstream>
 #include <vector>
 #include <set>
 #include <assert.h>
@@ -19,8 +22,6 @@ enum class SearchType { GreedyBfs, AStar, HillClimbing, SimulatedAnnealing };
 
 class State {
  public:
-  // @TODO: Rename 'score' into something more meaningful. Something with a
-  // closer meaning to cost!
   double score;  // The score based on which the state will be placed in the
                  // priority queue. How the score is calculated is dependent on
                  // the search algorithm (searchType).
@@ -40,7 +41,6 @@ class State {
   bool** _blackedOut;
   int _level;
 
-  // @TODO: Remove friend class declaration, only IsGoal remains a friend
   friend class HitoriSolver;
 };
 

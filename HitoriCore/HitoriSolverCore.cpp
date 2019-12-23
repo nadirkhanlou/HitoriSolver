@@ -1,9 +1,6 @@
 #include "HitoriSolverCore.h"
 
-#include <fstream>
-#include <iostream>
-
-//#define PERMUTATION_SUCCESSOR
+#define PERMUTATION_SUCCESSOR
 
 namespace HitoriSolverCore {
 // Softmax filter that turns a vector of real valued, positive numbers (which
@@ -34,21 +31,20 @@ State::State(int dimension)
       costSoFar(0),
       _blackedOut(new bool*[_dimension]) {
   for (int i = 0; i < _dimension; ++i) {
-    _blackedOut[i] = new bool[_dimension];
-    for (int j = 0; j < _dimension; ++j) {
-      _blackedOut[i][j] = false;
-    }
+    _blackedOut[i] = new bool[_dimension]{};
   }
 }
 
 State::State(const State& other)
-    : _level(other._level), score(other.score), costSoFar(other.costSoFar) {
-  this->_dimension = other._dimension;
-  this->_blackedOut = new bool*[_dimension];
+    : _dimension(other._dimension),
+      _level(other._level),
+      score(other.score),
+      costSoFar(other.costSoFar),
+      _blackedOut(new bool*[_dimension]) {
   for (int i = 0; i < _dimension; ++i) {
     this->_blackedOut[i] = new bool[_dimension];
     std::copy(other._blackedOut[i], other._blackedOut[i] + _dimension,
-              this->_blackedOut[i]);
+              _blackedOut[i]);
   }
 }
 
@@ -76,9 +72,9 @@ State& State::operator=(const State& other) {
     this->score = other.score;
     this->costSoFar = other.costSoFar;
     this->_level = other._level;
-    if (_blackedOut) {
+    if (this->_blackedOut) {
       for (int i = 0; i < _dimension; ++i) {
-        if (_blackedOut[i]) {
+        if (this->_blackedOut[i]) {
           delete[] this->_blackedOut[i];
           this->_blackedOut[i] = nullptr;
         }
@@ -98,43 +94,62 @@ State& State::operator=(const State& other) {
 }
 
 State& State::operator=(State&& other) noexcept {
-  this->score = other.score;
-  this->costSoFar = other.costSoFar;
-  this->_level = other._level;
-  if (this->_blackedOut) {
-    for (int i = 0; i < _dimension; ++i) {
-      if (this->_blackedOut[i]) {
-        delete[] this->_blackedOut[i];
-        _blackedOut[i] = nullptr;
+  if (this != &other) {
+    this->score = other.score;
+    this->costSoFar = other.costSoFar;
+    this->_level = other._level;
+    if (this->_blackedOut) {
+      for (int i = 0; i < _dimension; ++i) {
+        if (this->_blackedOut[i]) {
+          delete[] this->_blackedOut[i];
+          this->_blackedOut[i] = other._blackedOut[i];
+        }
       }
+      delete[] this->_blackedOut;
+      this->_blackedOut = nullptr;
     }
-    delete[] this->_blackedOut;
-    _blackedOut = nullptr;
+    this->_dimension = other._dimension;
+    this->_blackedOut = other._blackedOut;
+    other._blackedOut = nullptr;
+    other._dimension = 0;
   }
-  this->_dimension = other._dimension;
-  this->_blackedOut = other._blackedOut;
-  other._blackedOut = nullptr;
-  other._dimension = 0;
   return *this;
 }
 
 HitoriSolver::HitoriSolver(const char* filePath) {
-  std::ifstream input;
-  input.open(filePath);
+  std::ifstream input(filePath);
 
-  input >> _dimension;
+  // Read the first line to determine the dimensions of the game board
+  std::string line;
+  std::getline(input, line);
+  std::istringstream iss(line);
+  std::vector<int> firstLine;
+  while (iss) {
+    int num;
+    iss >> num;
+    firstLine.push_back(num);
+  }
+  _dimension = firstLine.size() - 1;
+
+  // Now initialize the arrays
   _gameBoard = new int*[_dimension];
   _whitedOut = new bool*[_dimension];
-
-  for (int i = 0; i < _dimension; i++) {
+  for (int i = 0; i < _dimension; ++i) {
+    // Initialize the _gameBoard and _whitedOut 2D arrays
     _gameBoard[i] = new int[_dimension];
-    _whitedOut[i] = new bool[_dimension];
-    for (int j = 0; j < _dimension; j++) {
+    _whitedOut[i] = new bool[_dimension]{};
+    // Copy the first line from firstVector to _gameBoard[0]
+    _gameBoard[0][i] = firstLine[i];
+  }
+  // Copy the rest of the game board from file
+  for (int i = 1; i < _dimension; ++i) {
+    for (int j = 0; j < _dimension; ++j) {
       input >> _gameBoard[i][j];
-      _whitedOut[i][j] = false;
     }
   }
-  input.close();
+
+  PrintState(InitialState());
+  std::cout << "hey\n";
 }
 
 HitoriSolver::~HitoriSolver() {}
@@ -189,12 +204,13 @@ bool HitoriSolver::IsGoal(State& s) {
 std::vector<State> HitoriSolver::PermutationSuccessor(
     State& currentState, SearchType searchType,
     double (*heuristic)(const State&, int**)) {
-
-    //This successor creates all permutations of shading blocks in a row which are feasible
+  // This successor creates all permutations of shading blocks in a row which
+  // are feasible
 
   std::vector<State> successors;
-  if (currentState._level >= _dimension) return successors; // if the row is the last one it doesnt have any successor
-
+  if (currentState._level >= _dimension)
+    return successors;  // if the row is the last one it doesnt have any
+                        // successor
 
   // clean row is a row which there is no need to shade any blocks in it
   bool* cleanRow = new bool[_dimension];
@@ -210,12 +226,13 @@ std::vector<State> HitoriSolver::PermutationSuccessor(
     successors.push_back(cleanRowState);
   }
 
-  //NShadeGenerator generates permutations of all numbers in a row taken N at a time
-  
-  //Here in this loop NShadeGenerator is called with parameter N = i
-  
-  //If PreProcess method is called at start a min and a max bound can be found for i
-  //otherwise it will start from 1 to half the size of the row
+  // NShadeGenerator generates permutations of all numbers in a row taken N at a
+  // time
+
+  // Here in this loop NShadeGenerator is called with parameter N = i
+
+  // If PreProcess method is called at start a min and a max bound can be found
+  // for i otherwise it will start from 1 to half the size of the row
   for (int i =
            std::max(_rowConflicts ? _rowConflicts[currentState._level] : 1, 1);
        i <=
@@ -225,10 +242,11 @@ std::vector<State> HitoriSolver::PermutationSuccessor(
     NShadeGenerator(i, successors, currentState);
   }
 
-  //Depends on search type the score will have different value
-  //In GreedyBFS and HillClimbing it is equal to heuristic of each state but in other algorithms
-  //it is needed to consider g(n) -which here is called costSoFar- as well
-  
+  // Depends on search type the score will have different value
+  // In GreedyBFS and HillClimbing it is equal to heuristic of each state but in
+  // other algorithms it is needed to consider g(n) -which here is called
+  // costSoFar- as well
+
   if (searchType == SearchType::GreedyBfs ||
       searchType == SearchType::HillClimbing) {
     for (auto it = successors.begin(); it != successors.end(); ++it) {
@@ -248,25 +266,27 @@ std::vector<State> HitoriSolver::NextConfilctSuccessor(
     double (*heuristic)(const State&, int**)) {
   std::vector<State> successors;
 
-  //This successor has 2 options as successor in each candidate block, if none of them be
-  //feasible it will iterate to next candidate block
+  // This successor has 2 options as successor in each candidate block, if none
+  // of them be feasible it will iterate to next candidate block
 
-  //Candidate blocks are blocks which have one or more conflict with a block in same row or column
-  
-  //As it is mentioned earlier there are 2 options, one is shading the candidate block and other
-  //option is shade all other blocks which have conflict with the candidate block
-  
-  //In this successor _level stores the last block checked in predecessor nodes 
+  // Candidate blocks are blocks which have one or more conflict with a block in
+  // same row or column
+
+  // As it is mentioned earlier there are 2 options, one is shading the
+  // candidate block and other option is shade all other blocks which have
+  // conflict with the candidate block
+
+  // In this successor _level stores the last block checked in predecessor nodes
 
   for (int I = currentState._level; I < _dimension * _dimension; I++) {
     div_t resultD = div(I, _dimension);
     int i = resultD.quot;
     int j = resultD.rem;
 
-    //if the block is shaded in predecessors or it is not candidate to shade 
+    // if the block is shaded in predecessors or it is not candidate to shade
     if (currentState._blackedOut[i][j] || _whitedOut[i][j]) continue;
 
-    //find conflicts
+    // find conflicts
     std::vector<std::pair<int, int>> confilcts;
     for (int k = 0; k < _dimension; ++k) {
       if (k != j && !currentState._blackedOut[i][k] &&
@@ -285,7 +305,7 @@ std::vector<State> HitoriSolver::NextConfilctSuccessor(
       onlyOneShaded._blackedOut[i][j] = true;
       onlyOneShaded.costSoFar += 1;
 
-      //check if candidate block is feasible to shade
+      // check if candidate block is feasible to shade
       if (IsFeasible(onlyOneShaded)) {
         successors.push_back(onlyOneShaded);
       }
@@ -298,7 +318,8 @@ std::vector<State> HitoriSolver::NextConfilctSuccessor(
         shadedConfilcts.costSoFar += 1;
       }
 
-      //check if shading all other blocks in conflict with the candidate block is feasible
+      // check if shading all other blocks in conflict with the candidate block
+      // is feasible
       if (IsFeasible(shadedConfilcts)) {
         shadedConfilcts._level++;
         successors.push_back(shadedConfilcts);
@@ -309,8 +330,9 @@ std::vector<State> HitoriSolver::NextConfilctSuccessor(
   }
 
   // Depends on search type the score will have different value
-  // In GreedyBFS and HillClimbing it is equal to heuristic of each state but in other algorithms
-  //it is needed to consider g(n) -which here is called costSoFar- as well
+  // In GreedyBFS and HillClimbing it is equal to heuristic of each state but in
+  // other algorithms
+  // it is needed to consider g(n) -which here is called costSoFar- as well
   if (searchType == SearchType::GreedyBfs ||
       searchType == SearchType::HillClimbing) {
     for (auto it = successors.begin(); it != successors.end(); ++it) {
@@ -329,8 +351,8 @@ std::vector<State> HitoriSolver::Successor(State& currentState,
                                            SearchType searchType,
                                            double (*heuristic)(const State&,
                                                                int**)) {
-//Depending on PERMUTATION_SUCCESSOR definition the successor will decide which successor
-//method should be called
+// Depending on PERMUTATION_SUCCESSOR definition the successor will decide which
+// successor method should be called
 #ifdef PERMUTATION_SUCCESSOR
   return PermutationSuccessor(currentState, searchType, heuristic);
 #endif  // PERMUTATION_SUCCESSOR
@@ -340,14 +362,13 @@ std::vector<State> HitoriSolver::Successor(State& currentState,
 }
 
 bool HitoriSolver::IsFeasible(const State& currentState) {
-
-  //This feasiblity checker is used in NextConflictSuccessor
+  // This feasiblity checker is used in NextConflictSuccessor
 
   div_t resultD = div(currentState._level, _dimension);
   int x = resultD.quot;
   int y = resultD.rem;
 
-  //check feasibility of shading candidate block 
+  // check feasibility of shading candidate block
   if (currentState._blackedOut[x][y]) {
     if (!IsFeasibleAdj(currentState, x, y) ||
         !IsFeasibleSurround(currentState, x, y))
@@ -356,8 +377,8 @@ bool HitoriSolver::IsFeasible(const State& currentState) {
       return true;
   }
 
-  //Check feasibility when it is desired to shade all other blocks in conficts with
-  //candidate block but itself 
+  // Check feasibility when it is desired to shade all other blocks in conficts
+  // with candidate block but itself
   for (int i = 0; i < _dimension; ++i) {
     if (currentState._blackedOut[i][y]) {
       if (!IsFeasibleAdj(currentState, i, y) ||
@@ -377,8 +398,8 @@ bool HitoriSolver::IsFeasible(const State& currentState) {
 }
 
 bool HitoriSolver::IsFeasibleAdj(const State& currentState, int x, int y) {
-
-  //It will retrun false if shading the block cause shaded blocks become adjacent
+  // It will retrun false if shading the block cause shaded blocks become
+  // adjacent
 
   if ((x < _dimension - 1 && currentState._blackedOut[x + 1][y]) ||
       (x > 0 && currentState._blackedOut[x - 1][y]) ||
@@ -391,8 +412,8 @@ bool HitoriSolver::IsFeasibleAdj(const State& currentState, int x, int y) {
 }
 
 bool HitoriSolver::IsFeasibleSurround(const State& currentState, int x, int y) {
-
-  //It will return false if shading the block cause a white block be surrounded by shaded blocks
+  // It will return false if shading the block cause a white block be surrounded
+  // by shaded blocks
 
   if (((x >= _dimension - 2 || currentState._blackedOut[x + 2][y]) &&
        (x < _dimension - 1 &&
@@ -418,8 +439,7 @@ bool HitoriSolver::IsFeasibleSurround(const State& currentState, int x, int y) {
 }
 
 bool HitoriSolver::IsFeasible(bool* shaded, const State& currentState) {
-
-  //It will check feasiblity of shading blocks based on permutations in a row
+  // It will check feasiblity of shading blocks based on permutations in a row
 
   for (int i = 1; i < _dimension - 1; i++) {
     if ((shaded[i] && shaded[i - 1]) || (shaded[i] && shaded[i + 1]))
@@ -464,7 +484,7 @@ bool HitoriSolver::IsFeasible(bool* shaded, const State& currentState) {
       return false;
   }
 
-  //Consider if conflicts are solved, if not the state is not feasible 
+  // Consider if conflicts are solved, if not the state is not feasible
   for (int i = 0; i < _dimension; i++) {
     if (!shaded[i]) {
       for (int j = i + 1; j < _dimension; j++) {
@@ -485,15 +505,16 @@ bool HitoriSolver::IsFeasible(bool* shaded, const State& currentState) {
 
 void HitoriSolver::NShadeGenerator(int n, std::vector<State>& succcessorStates,
                                    const State& currentState) {
-  //NShadeGenerator generates permutations of all blocks in a row taken N at a time recursively
-  
-    bool* tempShadedFlags = new bool[_dimension];
+  // NShadeGenerator generates permutations of all blocks in a row taken N at a
+  // time recursively
+
+  bool* tempShadedFlags = new bool[_dimension];
   for (int i = 0; i < _dimension; i++) {
     tempShadedFlags[i] = false;
   }
 
-  //It is not needed to generate permutations after _dimension - n + 1 because it is transparent
-  //can not generate enough to get N
+  // It is not needed to generate permutations after _dimension - n + 1 because
+  // it is transparent can not generate enough to get N
   for (int i = 0; i < _dimension - n + 1; i++) {
     Shade(tempShadedFlags, i, succcessorStates, currentState, n - 1);
   }
@@ -508,7 +529,8 @@ void HitoriSolver::Shade(bool* shaded, int selectIndex,
       !IsFeasibleAdj(currentState, currentState._level, selectIndex))
     return;
 
-  //Select block to shade temporary in scope of this stack, It will undo it before exit the scope
+  // Select block to shade temporary in scope of this stack, It will undo it
+  // before exit the scope
   shaded[selectIndex] = true;
 
   if (recursiveLevel < 1) {
@@ -523,8 +545,7 @@ void HitoriSolver::Shade(bool* shaded, int selectIndex,
                 _gameBoard[currentState._level][i] == _gameBoard[j][i])
               isConflictDecreased = true;
           }
-          if (!isConflictDecreased)
-            newState.costSoFar += 1; 
+          if (!isConflictDecreased) newState.costSoFar += 1;
         }
       }
       newState._level++;
@@ -534,10 +555,10 @@ void HitoriSolver::Shade(bool* shaded, int selectIndex,
     return;
   }
 
-  //If a block is shaded next one can not be shaded so it is enough to start from
-  //selectIndext + 2
-  //Also it is enough to generate until _dimension - recursiveLevel + 1 as the same reason as
-  //explained in NShadeGenerator method
+  // If a block is shaded next one can not be shaded so it is enough to start
+  // from selectIndext + 2 Also it is enough to generate until _dimension -
+  // recursiveLevel + 1 as the same reason as explained in NShadeGenerator
+  // method
   for (int i = selectIndex + 2; i < _dimension - recursiveLevel + 1; i++) {
     if (!shaded[i])
       Shade(shaded, i, succcessorStates, currentState, recursiveLevel - 1);
@@ -546,9 +567,8 @@ void HitoriSolver::Shade(bool* shaded, int selectIndex,
 }
 
 void HitoriSolver::PreProcess() {
-
-  //Before running algorithm some blocks can determined as whitedOut, It means there is no need
-  //to shaded them to get to the solution
+  // Before running algorithm some blocks can determined as whitedOut, It means
+  // there is no need to shaded them to get to the solution
   for (int i = 0; i < _dimension; i++) {
     _whitedOut[i] = new bool[_dimension];
     for (int j = 0; j < _dimension; j++) {
@@ -569,7 +589,8 @@ void HitoriSolver::PreProcess() {
     }
   }
 
-  //_rowConfilcts and _rowMaxShade give a bound to generate permutations in PermutationSuccessor
+  //_rowConfilcts and _rowMaxShade give a bound to generate permutations in
+  // PermutationSuccessor
   _rowConflicts = new int[_dimension];
   _rowMaxShade = new int[_dimension];
   for (int L = 0; L < _dimension; L++) {
@@ -582,8 +603,7 @@ void HitoriSolver::PreProcess() {
     for (int i = 0; i < _dimension; i++) {
       if (!conflictsCounter[i]) {
         for (int j = i + 1; j < _dimension; j++) {
-          if (_gameBoard[L][i] ==
-              _gameBoard[L][j]) {
+          if (_gameBoard[L][i] == _gameBoard[L][j]) {
             conflictsCounter[j] = true;
             _rowConflicts[L]++;
             _rowMaxShade[L]++;
@@ -603,13 +623,11 @@ void HitoriSolver::PreProcess() {
             }
           }
         }
-
       }
     }
     delete[] conflictsCounter;
     conflictsCounter = nullptr;
   }
-  
 }
 
 void HitoriSolver::PrintState(const State& currentState) {
@@ -636,9 +654,9 @@ double HitoriSolver::HeuristicFunction1(const State& currentState,
                                         int** gameBoard) {
   double h = 0;
 
-  //This heuristic function is compatible with the PermutationSuccessor
-  //It will find the blocks in next levels in conflicts with the blocks in the row remained
-  //after blocks choosen by the successor in the row are shaded
+  // This heuristic function is compatible with the PermutationSuccessor
+  // It will find the blocks in next levels in conflicts with the blocks in the
+  // row remained after blocks choosen by the successor in the row are shaded
 
   if (currentState._level < 1) {
     for (int i = 0; i < currentState._dimension; i++) {
@@ -731,7 +749,7 @@ State HitoriSolver::GreedyBfs(State initialState,
     priorityQueue.pop();
     ++counter;
 
-	// If currentState is the goal, return it
+    // If currentState is the goal, return it
     if (IsGoal(currentState)) {
       std::cout << "Nodes checked: " << counter << "\n";
       std::cout << "States in queue: " << priorityQueue.size() << "\n";
@@ -798,7 +816,7 @@ State HitoriSolver::SteepestAscentHillClimbing(State initialState,
   int counter = 0;
   while (true) {
     ++counter;
-    
+
     // Generate the successors of the current state
     std::vector<State> successors =
         Successor(currentState, SearchType::HillClimbing, heuristic);
@@ -850,9 +868,9 @@ State HitoriSolver::StochasticHillClimbing(State initialState,
       probabilities.push_back(it->score);
     }
 
-	// No successors
-	if (successors.begin() == successors.end()) break;
-    
+    // No successors
+    if (successors.begin() == successors.end()) break;
+
     // Apply softmax to 'probabilities' to get a probability distribution
     Softmax(probabilities);
 
@@ -883,9 +901,8 @@ State HitoriSolver::StochasticHillClimbing(State initialState,
 
 State HitoriSolver::KStartStochasticHillClimbing(
     State initialState, double (*heuristic)(const State&, int**)) {
-
   omp_set_dynamic(0);
-   
+
   // Use the maximum number of threads available
   omp_set_num_threads(omp_get_max_threads());
 
@@ -893,7 +910,6 @@ State HitoriSolver::KStartStochasticHillClimbing(
   int numOfThreads = omp_get_num_threads();
   std::vector<State> results(numOfThreads);
   results.resize(omp_get_num_threads());
-
 
 #pragma omp parallel
   {
@@ -904,7 +920,7 @@ State HitoriSolver::KStartStochasticHillClimbing(
     results[threadNum] = res;
   }
 #pragma omp barrier
-    {}
+  {}
 
   // Check the results from each thread and return the first one that is a goal
   for (auto it = results.begin(); it != results.end(); ++it) {
@@ -931,17 +947,18 @@ State HitoriSolver::SimulatedAnnealing(State initialState,
     ++counter;
     std::vector<State> successors =
         Successor(currentState, SearchType::SimulatedAnnealing, heuristic);
-	// Check if there are any neighbours for the current state
+    // Check if there are any neighbours for the current state
     if (successors.empty()) {
       break;
     }
-	// Randomly choose one of the neighbours
+    // Randomly choose one of the neighbours
     randomIndex = std::rand() % successors.size();
     delta = successors[randomIndex].score - currentState.score;
-	// If the selected neighbour is better, choose it
+    // If the selected neighbour is better, choose it
     if (delta < 0) {
       currentState = successors[randomIndex];
-	// If the selected neighbour is not better, choose it with probability p = exp(-(delta / *T))
+      // If the selected neighbour is not better, choose it with probability p =
+      // exp(-(delta / *T))
     } else {
       if (RANDOM < std::exp(-(delta / *T))) {
         currentState = successors[randomIndex];
