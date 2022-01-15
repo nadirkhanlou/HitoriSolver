@@ -51,7 +51,7 @@ int main() {
       (int)(std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1)
                 .count() *
             1000);
-  std::cout << "Duration: " << durationPast << "ms\n"
+  std::cout << "Duration: " << durationPast << "ms\n";
   std::cout << "========================================\n";
   delete solver;
 #endif
@@ -69,7 +69,7 @@ int main() {
       (int)(std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1)
                 .count() *
             1000);
-  std::cout << "Duration: " << durationPast << "ms\n"
+  std::cout << "Duration: " << durationPast << "ms\n";
   std::cout << "========================================\n";
   delete solver;
 #endif
@@ -93,7 +93,7 @@ int main() {
       (int)(std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1)
                 .count() *
             1000);
-  std::cout << "Duration: " << durationPast << "ms\n"
+  std::cout << "Duration: " << durationPast << "ms\n";
   std::cout << "========================================\n";
   delete solver;
 #endif
@@ -115,7 +115,7 @@ int main() {
       (int)(std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1)
                 .count() *
             1000);
-  std::cout << "Duration: " << durationPast << "ms\n"
+  std::cout << "Duration: " << durationPast << "ms\n";
   std::cout << "========================================\n";
   delete solver;
 #endif
@@ -137,7 +137,7 @@ int main() {
       (int)(std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1)
                 .count() *
             1000);
-  std::cout << "Duration: " << durationPast << "ms\n"
+  std::cout << "Duration: " << durationPast << "ms\n";
   std::cout << "========================================\n";
   delete solver;
 #endif
@@ -161,7 +161,7 @@ int main() {
       (int)(std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1)
                 .count() *
             1000);
-  std::cout << "Duration: " << durationPast << "ms\n"
+  std::cout << "Duration: " << durationPast << "ms\n";
   std::cout << "========================================\n";
   delete solver;
 #endif
